@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="favBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8F2D44" />
+      <stop offset="50%" stop-color="#7A263A" />
+      <stop offset="100%" stop-color="#4E1522" />
+    </linearGradient>
+    <linearGradient id="favGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F5E6BE" />
+      <stop offset="45%" stop-color="#D4AF37" />
+      <stop offset="100%" stop-color="#9E782F" />
+    </linearGradient>
+    <linearGradient id="pageShine" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#EAE3D2" stop-opacity="0.75" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.3" />
+    </filter>
+  </defs>
+
+  <!-- Rounded App Tile Base -->
+  <rect width="64" height="64" rx="14" fill="url(#favBg)" />
+  <rect x="1" y="1" width="62" height="62" rx="13" fill="none" stroke="url(#favGold)" stroke-width="1.2" stroke-opacity="0.5" />
+
+  <!-- Monogram Open Book -->
+  <g filter="url(#shadow)" transform="translate(10, 14)">
+    <!-- Left Leaf -->
+    <path d="M22 6C16 3 8 4 3 7V30C8 27 16 26 22 29V6Z" 
+          fill="url(#pageShine)" 
+          stroke="url(#favGold)" 
+          stroke-width="1.2" 
+          stroke-linejoin="round" />
+    
+    <!-- Right Leaf -->
+    <path d="M22 6C28 3 36 4 41 7V30C36 27 28 26 22 29V6Z" 
+          fill="url(#pageShine)" 
+          stroke="url(#favGold)" 
+          stroke-width="1.2" 
+          stroke-linejoin="round" />
+
+    <!-- Spine Center & Bookmark Ribbon -->
+    <line x1="22" y1="5" x2="22" y2="30" stroke="url(#favGold)" stroke-width="2" stroke-linecap="round" />
+    <path d="M22 5V22L25 19L28 22V5" fill="#C93B57" stroke="none" opacity="0.9" />
+
+    <!-- Left Page Engraving Lines -->
+    <line x1="7" y1="12" x2="17" y2="10.5" stroke="#9E782F" stroke-width="1" stroke-linecap="round" opacity="0.7" />
+    <line x1="7" y1="17" x2="17" y2="15.5" stroke="#9E782F" stroke-width="1" stroke-linecap="round" opacity="0.7" />
+    <line x1="7" y1="22" x2="15" y2="20.5" stroke="#9E782F" stroke-width="1" stroke-linecap="round" opacity="0.7" />
+
+    <!-- Right Page Engraving Lines -->
+    <line x1="27" y1="10.5" x2="37" y2="12" stroke="#9E782F" stroke-width="1" stroke-linecap="round" opacity="0.7" />
+    <line x1="27" y1="15.5" x2="37" y2="17" stroke="#9E782F" stroke-width="1" stroke-linecap="round" opacity="0.7" />
+    <line x1="27" y1="20.5" x2="35" y2="22" stroke="#9E782F" stroke-width="1" stroke-linecap="round" opacity="0.7" />
+  </g>
+</svg>

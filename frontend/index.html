@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>BookHaven — Discover Your Next Great Read</title>
+  <meta name="description"
+    content="BookHaven is an editorial online bookstore featuring curated bestsellers, timeless classics, thought-provoking non-fiction, and instant eBooks." />
+  
+  <!-- Favicon / Brand Symbol -->
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+
+  <!-- Google Fonts: Playfair Display + Cormorant Garamond + Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,600&display=swap"
+    rel="stylesheet">
+
+  <!-- jsPDF for eBook PDF generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <!-- Clerk JS SDK -->
+  <script
+    async
+    crossorigin="anonymous"
+    data-clerk-publishable-key="pk_test_cmVhZHktc3RhZy0xMDIzLmNsZXJrLmFjY291bnRzLmRldiQ"
+    src="https://ready-stag-1023.clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
+    type="text/javascript"></script>
+
+  <!-- Global API Backend URL & Payment Gateway Configuration -->
+  <script>
+    window.BOOKHAVEN_API_URL = 'https://bookhaven-website.onrender.com/api';
+    window.RAZORPAY_KEY_ID = 'rzp_test_TaeA7VnqRyVNqD';
+  </script>
+
+  <!-- Razorpay Standard Checkout SDK -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <!-- =====================================================================
+       CINEMATIC INTRO OVERLAY
+       Plays Intro.mp4 on first visit / new session. Can be skipped or replayed.
+       ===================================================================== -->
+  <div id="intro-overlay" class="intro-overlay" aria-label="BookHaven Cinematic Opening" role="dialog" aria-modal="true">
+    <div class="intro-video-wrapper">
+      <video id="intro-video" class="intro-video" muted playsinline preload="auto">
+        <source src="Intro.mp4" type="video/mp4">
+      </video>
+      <div class="intro-vignette"></div>
+    </div>
+    <div class="intro-controls">
+      <button id="skip-intro-btn" class="skip-intro-btn" aria-label="Skip cinematic introduction">
+        <span>SKIP INTRO</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header id="main-header">
+    <div class="header-inner">
+      <!-- Mobile Menu Toggle -->
+      <button class="mobile-nav-toggle" id="mobile-nav-toggle" aria-label="Toggle navigation menu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+
+      <!-- Literary Brand Logo -->
+      <a href="#home" class="brand-logo" aria-label="BookHaven Homepage">
+        <div class="brand-monogram">
+          <svg width="26" height="26" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 6C4 4.89543 4.89543 4 6 4H14C15.1046 4 16 4.89543 16 6V26C16 24.8954 15.1046 24 14 24H6C4.89543 24 4 24.8954 4 26V6Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+            <path d="M28 6C28 4.89543 27.1046 4 26 4H18C16.8954 4 16 4.89543 16 6V26C16 24.8954 16.8954 24 18 24H26C27.1046 24 28 24.8954 28 26V6Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+            <path d="M16 8V24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M7 9H13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M7 13H13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M19 9H25" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M19 13H25" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="brand-text-wrap">
+          <span class="brand-title">BOOKHAVEN</span>
+          <span class="brand-tagline">OPEN YOUR NEXT STORY</span>
+        </div>
+      </a>
+
+      <!-- Primary Navigation -->
+      <nav class="nav-desktop" id="main-nav">
+        <ul class="nav-links">
+          <li><a href="#home" class="nav-link active">Home</a></li>
+          <li><a href="#books" class="nav-link">Books</a></li>
+          <li><a href="#categories" class="nav-link">Categories</a></li>
+          <li><a href="#bestsellers" class="nav-link">Bestsellers</a></li>
+          <li><a href="#trending" class="nav-link" id="nav-trending">Trending</a></li>
+          <li><a href="#journal" class="nav-link">Journal</a></li>
+          <li><a href="#offers" class="nav-link" id="nav-offers">Offers</a></li>
+          <li><a href="#ebooks" class="nav-link" id="nav-ebooks">eBooks</a></li>
+        </ul>
+      </nav>
+
+      <!-- Search & User Actions -->
+      <div class="header-actions">
+        <!-- Search Trigger -->
+        <div class="search-trigger-wrap">
+          <button class="search-trigger-btn" id="search-trigger-btn" aria-label="Open search">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <span class="search-trigger-text">Search books, authors...</span>
+            <span class="search-trigger-shortcut">⌘K</span>
+          </button>
+        </div>
+
+        <!-- Wishlist Button -->
+        <button class="action-icon-btn" id="wishlist-btn-header" aria-label="View Reading Wishlist">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+          </svg>
+          <span class="badge-count" id="wishlist-count">0</span>
+        </button>
+
+        <!-- User Account Menu -->
+        <div class="user-account-dropdown" id="user-account-dropdown" style="position: relative; display: none;">
+          <div class="user-avatar" id="user-avatar" title="Account Menu" style="display: none;">
+            <span>A</span>
+          </div>
+          <div class="user-menu" id="user-menu">
+            <div class="user-menu-header">
+              <div class="user-menu-name" id="menu-user-name">Guest Reader</div>
+              <div class="user-menu-email" id="menu-user-email">Sign in to sync your library</div>
+            </div>
+            <a href="#" class="user-menu-item" data-action="profile">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              <span>Reader Profile</span>
+            </a>
+            <a href="#" class="user-menu-item" data-action="orders">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+              <span>Order History</span>
+            </a>
+            <a href="#" class="user-menu-item" data-action="wishlist">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+              <span>Reading Wishlist</span>
+            </a>
+            <a href="#" class="user-menu-item" data-action="settings">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+              <span>Preferences</span>
+            </a>
+            <a href="/admin/" class="user-menu-item" id="admin-panel-link" style="display: none;" target="_blank">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
+              <span>Admin Console</span>
+            </a>
+            <a href="#" class="user-menu-item logout" id="logout-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+              <span>Sign Out</span>
+            </a>
+          </div>
+        </div>
+
+        <button class="btn btn-outline" id="login-btn">Sign In</button>
+        
+        <!-- Cart Drawer Button -->
+        <button class="btn btn-primary btn-cart" id="cart-btn" aria-label="View Shopping Bag">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <path d="M16 10a4 4 0 0 1-8 0"></path>
+          </svg>
+          <span>Bag</span>
+          <span class="cart-pill-count" id="cart-count">0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Mobile Drawer Navigation -->
+  <div class="mobile-nav-drawer" id="mobile-nav-drawer">
+    <div class="mobile-nav-header">
+      <span class="brand-title">BOOKHAVEN</span>
+      <button class="mobile-nav-close" id="mobile-nav-close" aria-label="Close menu">&times;</button>
+    </div>
+    <ul class="mobile-nav-links">
+      <li><a href="#home">Home</a></li>
+      <li><a href="#books">All Books</a></li>
+      <li><a href="#categories">Browse Categories</a></li>
+      <li><a href="#bestsellers">Bestsellers</a></li>
+      <li><a href="#trending">Trending Titles</a></li>
+      <li><a href="#journal">BookHaven Journal</a></li>
+      <li><a href="#offers">Curated Offers</a></li>
+      <li><a href="#ebooks">eBook Library</a></li>
+    </ul>
+  </div>
+  <div class="drawer-backdrop" id="drawer-backdrop"></div>
+
+  <!-- =====================================================================
+       HOMEPAGE HERO: CINEMATIC CONTINUATION
+       ===================================================================== -->
+  <section class="hero-editorial" id="home">
+    <div class="hero-editorial-container">
+      <div class="hero-editorial-text">
+        <div class="hero-kicker">
+          <span class="kicker-line"></span>
+          <span class="kicker-label">THE LITERARY DESTINATION</span>
+        </div>
+        <h1 class="hero-editorial-headline">
+          Discover Your Next <span class="italic-emphasis">Great Read</span>
+        </h1>
+        <p class="hero-editorial-description">
+          A thoughtfully curated sanctuary for readers, collectors, and thinkers. Explore timeless classics, breakthrough non-fiction, and captivating stories worth making room for.
+        </p>
+        <div class="hero-actions">
+          <a href="#books" class="btn btn-editorial-primary" id="browse-btn">
+            <span>Explore Collection</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </a>
+          <a href="#bestsellers" class="btn btn-editorial-secondary">Browse Bestsellers</a>
+        </div>
+        <div class="hero-stats">
+          <div class="stat-item">
+            <span class="stat-number">10,000+</span>
+            <span class="stat-label">Handpicked Volumes</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-item">
+            <span class="stat-number">4.9★</span>
+            <span class="stat-label">Reader Satisfaction</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-item">
+            <span class="stat-number">24h</span>
+            <span class="stat-label">Fast Dispatch</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Atmospheric Hero Book Composition -->
+      <div class="hero-editorial-visual">
+        <div class="hero-book-showcase">
+          <div class="hero-ambient-glow"></div>
+          <div class="hero-book-card hero-book-main">
+            <img src="assets/book-1-sapiens.jpg" alt="Sapiens by Yuval Noah Harari" class="hero-book-cover" />
+            <div class="hero-book-spine"></div>
+          </div>
+          <div class="hero-book-card hero-book-secondary">
+            <img src="assets/book-2-atomic-habits.jpg" alt="Atomic Habits by James Clear" class="hero-book-cover" />
+            <div class="hero-book-spine"></div>
+          </div>
+          <div class="hero-book-card hero-book-tertiary">
+            <img src="assets/book-3-1984.jpg" alt="1984 by George Orwell" class="hero-book-cover" />
+            <div class="hero-book-spine"></div>
+          </div>
+          <div class="hero-curator-badge">
+            <div class="curator-dot"></div>
+            <span>Curator's Literary Selection</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =====================================================================
+       CATEGORY DISCOVERY (Part 8)
+       ===================================================================== -->
+  <section class="section-categories" id="categories">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-kicker">CURATED AISLES</div>
+        <h2 class="section-title">Explore by Category</h2>
+        <p class="section-subtitle">Navigate through our meticulously organized collections and discover authors that inspire.</p>
+      </div>
+
+      <div class="category-cards-grid">
+        <div class="category-card" data-category="Fiction">
+          <div class="category-card-bg" style="background-image: linear-gradient(180deg, rgba(17,16,14,0.3) 0%, rgba(17,16,14,0.85) 100%), url('assets/cat-fiction.jpg');"></div>
+          <div class="category-card-content">
+            <span class="category-card-number">01</span>
+            <h3 class="category-card-title">Fiction</h3>
+            <p class="category-card-desc">Stories that transport you into other worlds.</p>
+            <span class="category-card-link">Browse Fiction &rarr;</span>
+          </div>
+        </div>
+
+        <div class="category-card" data-category="Self-Help">
+          <div class="category-card-bg" style="background-image: linear-gradient(180deg, rgba(17,16,14,0.3) 0%, rgba(17,16,14,0.85) 100%), url('assets/cat-nonfiction.jpg');"></div>
+          <div class="category-card-content">
+            <span class="category-card-number">02</span>
+            <h3 class="category-card-title">Self Development</h3>
+            <p class="category-card-desc">Ideas that shift perspective and sharpen mindsets.</p>
+            <span class="category-card-link">Browse Self Development &rarr;</span>
+          </div>
+        </div>
+
+        <div class="category-card" data-category="Business">
+          <div class="category-card-bg" style="background-image: linear-gradient(180deg, rgba(17,16,14,0.3) 0%, rgba(17,16,14,0.85) 100%), url('assets/cat-business.jpg');"></div>
+          <div class="category-card-content">
+            <span class="category-card-number">03</span>
+            <h3 class="category-card-title">Business & Strategy</h3>
+            <p class="category-card-desc">Think better. Build enduring enterprises.</p>
+            <span class="category-card-link">Browse Business &rarr;</span>
+          </div>
+        </div>
+
+        <div class="category-card" data-category="Sci-Fi">
+          <div class="category-card-bg" style="background-image: linear-gradient(180deg, rgba(17,16,14,0.3) 0%, rgba(17,16,14,0.85) 100%), url('assets/cat-scifi.jpg');"></div>
+          <div class="category-card-content">
+            <span class="category-card-number">04</span>
+            <h3 class="category-card-title">Science Fiction</h3>
+            <p class="category-card-desc">Speculative futures and worlds beyond imagination.</p>
+            <span class="category-card-link">Browse Sci-Fi &rarr;</span>
+          </div>
+        </div>
+
+        <div class="category-card" data-category="Classics">
+          <div class="category-card-bg" style="background-image: linear-gradient(180deg, rgba(17,16,14,0.3) 0%, rgba(17,16,14,0.85) 100%), url('assets/cat-classics.jpg');"></div>
+          <div class="category-card-content">
+            <span class="category-card-number">05</span>
+            <h3 class="category-card-title">Timeless Classics</h3>
+            <p class="category-card-desc">Masterpieces of human literature that never grow old.</p>
+            <span class="category-card-link">Browse Classics &rarr;</span>
+          </div>
+        </div>
+
+        <div class="category-card" data-category="Biography">
+          <div class="category-card-bg" style="background-image: linear-gradient(180deg, rgba(17,16,14,0.3) 0%, rgba(17,16,14,0.85) 100%), url('assets/cat-mystery.jpg');"></div>
+          <div class="category-card-content">
+            <span class="category-card-number">06</span>
+            <h3 class="category-card-title">Biography & Memoirs</h3>
+            <p class="category-card-desc">Extraordinary lives, decisions, and legacies worth knowing.</p>
+            <span class="category-card-link">Browse Biographies &rarr;</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =====================================================================
+       CURATED CATALOG (Part 9 & 10)
+       ===================================================================== -->
+  <main class="main-catalog-section" id="books">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-kicker">THE BOOKHAVEN CATALOGUE</div>
+        <h2 class="section-title">Curated For You</h2>
+        <p class="section-subtitle">Books worth making room on your bookshelf for.</p>
+      </div>
+
+      <!-- Filter Controls -->
+      <div class="filter-bar">
+        <div class="filter-pills-scroll">
+          <button class="filter-pill active" data-category="all">All Titles</button>
+          <button class="filter-pill" data-category="Classics">Classics</button>
+          <button class="filter-pill" data-category="Self-Help">Self-Help</button>
+          <button class="filter-pill" data-category="Fiction">Fiction</button>
+          <button class="filter-pill" data-category="Mystery">Mystery</button>
+          <button class="filter-pill" data-category="Sci-Fi">Sci-Fi</button>
+          <button class="filter-pill" data-category="Biography">Biography</button>
+          <button class="filter-pill" data-category="Business">Business</button>
+          <button class="filter-pill" data-category="eBook" data-ebook-filter>eBooks</button>
+        </div>
+        <div class="catalog-results-count" id="catalog-count-display">Showing all titles</div>
+      </div>
+
+      <!-- Books Grid -->
+      <div class="books-grid" id="books-container"></div>
+    </div>
+  </main>
+
+  <!-- =====================================================================
+       BESTSELLERS SECTION WITH TABS (Part 11)
+       ===================================================================== -->
+  <section class="section-bestsellers" id="bestsellers">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-kicker">READER ENDORSED</div>
+        <h2 class="section-title">BookHaven Bestsellers</h2>
+        <p class="section-subtitle">The volumes currently shaping discussions across our reading community.</p>
+      </div>
+
+      <div class="bestseller-tabs">
+        <button class="bestseller-tab active" data-bestseller-tab="all">All Genres</button>
+        <button class="bestseller-tab" data-bestseller-tab="Fiction">Fiction</button>
+        <button class="bestseller-tab" data-bestseller-tab="Self-Help">Non-Fiction</button>
+        <button class="bestseller-tab" data-bestseller-tab="Business">Business</button>
+        <button class="bestseller-tab" data-bestseller-tab="Classics">Classics</button>
+      </div>
+
+      <div class="books-grid" id="bestsellers-container"></div>
+    </div>
+  </section>
+
+  <!-- =====================================================================
+       TRENDING RANKED CAROUSEL (Part 12)
+       ===================================================================== -->
+  <section class="section-trending" id="trending">
+    <div class="container">
+      <div class="section-header-split">
+        <div>
+          <div class="section-kicker">WEEKLY VELOCITY</div>
+          <h2 class="section-title">Readers Are Loving</h2>
+          <p class="section-subtitle">Top-ranked titles based on reading velocity, discussions, and ratings this week.</p>
+        </div>
+        <div class="carousel-nav-buttons">
+          <button class="carousel-arrow-btn" id="trending-prev" aria-label="Previous trending books">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <button class="carousel-arrow-btn" id="trending-next" aria-label="Next trending books">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="trending-carousel-wrap">
+        <div class="trending-grid" id="trending-container"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =====================================================================
+       NEW ARRIVALS (Part 13)
+       ===================================================================== -->
+  <section class="section-new-arrivals" id="new-arrivals">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-kicker">FRESH ACQUISITIONS</div>
+        <h2 class="section-title">Just Arrived on Our Shelves</h2>
+        <p class="section-subtitle">Newly arrived editions, fresh translations, and recent publications.</p>
+      </div>
+      <div class="books-grid" id="new-arrivals-container"></div>
+    </div>
+  </section>
+
+  <!-- =====================================================================
+       THE BOOKHAVEN JOURNAL (Part 14)
+       Editorial magazine section establishing the brand identity
+       ===================================================================== -->
+  <section class="section-journal" id="journal">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-kicker">THE BOOKHAVEN JOURNAL</div>
+        <h2 class="section-title">Essays, Guides & Literary Notes</h2>
+        <p class="section-subtitle">Reflections on reading, curated recommendations, and dialogues with the written word.</p>
+      </div>
+
+      <div class="journal-grid">
+        <article class="journal-card">
+          <div class="journal-card-image" style="background-image: url('assets/journal-1.jpg');">
+            <span class="journal-tag">Reading Guide</span>
+          </div>
+          <div class="journal-card-body">
+            <div class="journal-meta">October 2026 • 6 min read</div>
+            <h3 class="journal-title">What to Read When You Need a Fresh Start</h3>
+            <p class="journal-excerpt">From ancient Stoic reflections to modern habit architecture, five volumes designed to reset your mental landscape.</p>
+            <a href="#books" class="journal-read-more">Read Essay &rarr;</a>
+          </div>
+        </article>
+
+        <article class="journal-card">
+          <div class="journal-card-image" style="background-image: url('assets/journal-2.jpg');">
+            <span class="journal-tag">Philosophy</span>
+          </div>
+          <div class="journal-card-body">
+            <div class="journal-meta">September 2026 • 8 min read</div>
+            <h3 class="journal-title">7 Books That Will Radically Shift How You Think</h3>
+            <p class="journal-excerpt">How deep work, probabilistic thinking, and behavioral psychology rewire the decisions you make every morning.</p>
+            <a href="#books" class="journal-read-more">Read Essay &rarr;</a>
+          </div>
+        </article>
+
+        <article class="journal-card">
+          <div class="journal-card-image" style="background-image: url('assets/journal-3.jpg');">
+            <span class="journal-tag">Classic Literature</span>
+          </div>
+          <div class="journal-card-body">
+            <div class="journal-meta">August 2026 • 5 min read</div>
+            <h3 class="journal-title">The Underrated Classics Truly Worth Re-Reading</h3>
+            <p class="journal-excerpt">Why returning to Orwell, Fitzgerald, and Lee as an adult unlocks layers that school syllabi never revealed.</p>
+            <a href="#books" class="journal-read-more">Read Essay &rarr;</a>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- =====================================================================
+       THE BOOKHAVEN EDIT (Offers - Part 15)
+       ===================================================================== -->
+  <section class="section-offers" id="offers">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-kicker">LIMITED ENGAGEMENTS</div>
+        <h2 class="section-title">The BookHaven Edit</h2>
+        <p class="section-subtitle">Thoughtfully selected bundles and courtesy codes for our discerning patrons.</p>
+      </div>
+      <div class="offers-grid" id="offers-container"></div>
+    </div>
+  </section>
+
+  <!-- =====================================================================
+       READ ANYWHERE (eBook Experience - Part 16)
+       ===================================================================== -->
+  <section class="section-ebook-feature" id="ebooks">
+    <div class="container">
+      <div class="ebook-feature-card">
+        <div class="ebook-feature-text">
+          <div class="section-kicker" style="color: var(--accent-gold);">DIGITAL EDITIONS</div>
+          <h2 class="ebook-feature-title">Read Anywhere.<br><span class="italic-emphasis">Your Next Story, Instantaneous.</span></h2>
+          <p class="ebook-feature-description">
+            Experience complete literary freedom. Download beautifully formatted eBooks directly to your tablet, phone, or e-reader. With zero shipping delay and prices 40% lower than print, your library travels everywhere you go.
+          </p>
+          <div class="ebook-benefits-grid">
+            <div class="benefit-item">
+              <div class="benefit-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
+              </div>
+              <div class="benefit-label">Immediate Access</div>
+            </div>
+            <div class="benefit-item">
+              <div class="benefit-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+              </div>
+              <div class="benefit-label">Any Screen or Device</div>
+            </div>
+            <div class="benefit-item">
+              <div class="benefit-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"></path><line x1="12" y1="6" x2="12" y2="8"></line><line x1="12" y1="16" x2="12" y2="18"></line></svg>
+              </div>
+              <div class="benefit-label">40% Savings on Print</div>
+            </div>
+            <div class="benefit-item">
+              <div class="benefit-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              </div>
+              <div class="benefit-label">Personal PDF Backup</div>
+            </div>
+          </div>
+          <div class="ebook-feature-cta">
+            <button class="btn btn-editorial-primary" id="filter-ebook-btn">Browse eBook Catalogue</button>
+          </div>
+        </div>
+        <div class="ebook-feature-mockup">
+          <div class="ebook-device-frame">
+            <img src="assets/book-5-the-alchemist.jpg" alt="The Alchemist eBook Preview" class="ebook-device-screen" />
+          </div>
+        </div>
+      </div>
+      <div class="books-grid" id="ebooks-container" style="margin-top: 3rem;"></div>
+    </div>
+  </section>
+
+  <!-- =====================================================================
+       LIVE SEARCH DRAWER / MODAL (Part 18)
+       ===================================================================== -->
+  <div class="search-modal" id="search-modal" aria-hidden="true">
+    <div class="search-modal-backdrop" id="search-modal-backdrop"></div>
+    <div class="search-modal-container">
+      <div class="search-input-header">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-input-icon">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="global-search-input" class="global-search-input" placeholder="Search by title, author, category, or keyword..." autocomplete="off" />
+        <button class="search-modal-close" id="search-modal-close" aria-label="Close search">&times;</button>
+      </div>
+
+      <div class="search-suggestions-panel" id="search-suggestions-panel">
+        <div class="search-tags-section">
+          <div class="search-tags-label">Popular Searches</div>
+          <div class="search-tags-list">
+            <button class="search-tag" data-query="Atomic Habits">Atomic Habits</button>
+            <button class="search-tag" data-query="Sapiens">Sapiens</button>
+            <button class="search-tag" data-query="Fiction">Fiction</button>
+            <button class="search-tag" data-query="Dune">Dune</button>
+            <button class="search-tag" data-query="Self-Help">Self-Help</button>
+            <button class="search-tag" data-query="Steve Jobs">Steve Jobs</button>
+          </div>
+        </div>
+
+        <div class="search-results-section">
+          <div class="search-tags-label" id="search-results-heading">Suggested Books</div>
+          <div class="search-results-list" id="search-results-list">
+            <!-- Dynamically injected -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       SLIDE-OVER CART DRAWER (Part 19)
+       ===================================================================== -->
+  <div class="cart-drawer-overlay modal" id="cart-modal" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="cart-drawer-backdrop" id="cart-drawer-backdrop" data-close-modal onclick="closeCart()"></div>
+    <div class="cart-drawer-container">
+      <div class="cart-drawer-header">
+        <div class="cart-header-title-wrap">
+          <h2 class="cart-drawer-title">Shopping Bag</h2>
+          <span class="cart-drawer-subtitle" id="cart-item-count-label">0 items</span>
+        </div>
+        <button class="cart-drawer-close close-modal" data-close-modal id="cart-close-btn" onclick="closeCart()" aria-label="Close shopping bag">&times;</button>
+      </div>
+
+      <!-- Free Shipping Meter -->
+      <div class="free-shipping-meter" id="free-shipping-meter">
+        <div class="meter-text" id="free-shipping-text">Add ₹999 for free standard courier delivery</div>
+        <div class="meter-track">
+          <div class="meter-fill" id="free-shipping-fill" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <!-- Cart Items List -->
+      <div class="cart-drawer-items" id="cart-items"></div>
+
+      <!-- Cart Footer -->
+      <div class="cart-drawer-footer">
+        <div class="cart-summary-row">
+          <span>Subtotal</span>
+          <span id="cart-subtotal">₹0</span>
+        </div>
+        <div class="cart-summary-row">
+          <span>Courier Shipping</span>
+          <span id="cart-shipping-cost">Calculated at checkout</span>
+        </div>
+        <div class="cart-total-row">
+          <span>Estimated Total</span>
+          <span id="cart-total">₹0</span>
+        </div>
+        <button class="btn btn-editorial-primary btn-checkout" id="checkout-btn">
+          <span>Proceed to Checkout</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </button>
+        <div class="cart-guarantee-note">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          <span>Guaranteed 256-bit SSL encrypted checkout</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       EDITORIAL SPLIT AUTHENTICATION MODAL (Part 21)
+       ===================================================================== -->
+  <div class="modal auth-modal-editorial" id="login-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-content auth-modal-content">
+      <button class="close-modal" id="login-close-btn" data-close-modal aria-label="Close dialog">&times;</button>
+      
+      <div class="auth-split-grid">
+        <!-- Editorial Visual Side -->
+        <div class="auth-visual-side">
+          <div class="auth-visual-inner">
+            <div class="auth-brand-mark">
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                <path d="M4 6C4 4.89543 4.89543 4 6 4H14C15.1046 4 16 4.89543 16 6V26C16 24.8954 15.1046 24 14 24H6C4.89543 24 4 24.8954 4 26V6Z" stroke="#B28A4A" stroke-width="2.2"/>
+                <path d="M28 6C28 4.89543 27.1046 4 26 4H18C16.8954 4 16 4.89543 16 6V26C16 24.8954 16.8954 24 18 24H26C27.1046 24 28 24.8954 28 26V6Z" stroke="#B28A4A" stroke-width="2.2"/>
+              </svg>
+            </div>
+            <blockquote class="auth-quote">
+              “Every great journey begins with a single page turned in silence.”
+            </blockquote>
+            <span class="auth-quote-author">— The BookHaven Collection</span>
+          </div>
+        </div>
+
+        <!-- Form Side -->
+        <div class="auth-form-side">
+          <div class="modal-header">
+            <div class="section-kicker">PATRON ACCESS</div>
+            <h2 class="modal-title" id="auth-title">Welcome to BookHaven</h2>
+            <p class="modal-subtitle">Sign in to manage your reading wishlist, order tracking, and library.</p>
+            <div class="form-error-msg general-error" id="error-auth-general" style="display:none;"></div>
+          </div>
+
+          <!-- Sign In Form -->
+          <form class="auth-form" id="login-form" novalidate>
+            <div class="form-group">
+              <label class="form-label" for="login-email">Email Address</label>
+              <input type="email" class="form-input" id="login-email" placeholder="name@example.com" autocomplete="email" required />
+              <div class="form-error-msg" id="error-login-email"></div>
+            </div>
+            <div class="form-group">
+              <div class="form-label-split">
+                <label class="form-label" for="login-password">Password</label>
+                <a href="#" id="forgot-link" class="forgot-link">Forgot password?</a>
+              </div>
+              <input type="password" class="form-input" id="login-password" placeholder="••••••••" autocomplete="current-password" required />
+              <div class="form-error-msg" id="error-login-password"></div>
+            </div>
+            <button type="submit" class="btn btn-editorial-primary btn-full" id="login-submit-btn">Sign In to Library</button>
+            <div class="divider"><span>or continue with</span></div>
+            <div id="google-login-container" style="display:flex;justify-content:center;margin-top:0.5rem;"></div>
+            <div class="create-account-link">
+              <span>New to BookHaven? </span>
+              <a href="#" id="to-signup">Create a Reader Account</a>
+            </div>
+          </form>
+
+          <!-- Signup Form -->
+          <form class="auth-form" id="signup-form" style="display:none;" novalidate>
+            <div class="form-group">
+              <label class="form-label" for="signup-name">Full Name</label>
+              <input type="text" class="form-input" id="signup-name" placeholder="Jane Reader" autocomplete="name" required />
+              <div class="form-error-msg" id="error-signup-name"></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="signup-email">Email Address</label>
+              <input type="email" class="form-input" id="signup-email" placeholder="you@example.com" autocomplete="email" required />
+              <div class="form-error-msg" id="error-signup-email"></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="signup-password">Password</label>
+              <input type="password" class="form-input" id="signup-password" placeholder="Minimum 8 characters" autocomplete="new-password" minlength="8" required />
+              <div class="form-error-msg" id="error-signup-password"></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="signup-confirm">Confirm Password</label>
+              <input type="password" class="form-input" id="signup-confirm" placeholder="Re-enter password" autocomplete="new-password" required />
+              <div class="form-error-msg" id="error-signup-confirm"></div>
+            </div>
+            <button type="submit" class="btn btn-editorial-primary btn-full" id="signup-submit-btn">Create Account</button>
+            <div class="divider"><span>or sign up with</span></div>
+            <div id="google-signup-container" style="display:flex;justify-content:center;margin-top:0.5rem;"></div>
+            <div class="create-account-link">
+              <span>Already have an account? </span>
+              <a href="#" id="to-login">Sign in</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Other Modals (Preserved IDs for script.js & api.js) -->
+  <!-- Checkout Modal -->
+  <div class="modal" id="payment-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-content payment-modal-content">
+      <button class="close-modal" id="payment-close-btn" data-close-modal aria-label="Close dialog">&times;</button>
+      <div id="payment-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Orders Modal -->
+  <div class="modal" id="orders-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-content orders-modal-content">
+      <button class="close-modal" id="orders-close-btn" data-close-modal aria-label="Close dialog">&times;</button>
+      <div id="orders-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Tracking Modal -->
+  <div class="modal" id="tracking-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-content tracking-modal-content">
+      <button class="close-modal" id="tracking-close-btn" data-close-modal aria-label="Close dialog">&times;</button>
+      <div id="tracking-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Review Modal -->
+  <div class="modal" id="review-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-content review-modal-content">
+      <button class="close-modal" id="review-close-btn" data-close-modal aria-label="Close dialog">&times;</button>
+      <div id="review-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Lightbox (Photo Preview Modal) -->
+  <div class="lightbox" id="lightbox" aria-hidden="true" style="display: none;">
+    <div class="lightbox-backdrop" onclick="closeLightbox()"></div>
+    <div class="lightbox-content">
+      <button class="lightbox-close" id="lightbox-close" onclick="closeLightbox()" aria-label="Close photo preview">&times;</button>
+      <img id="lightbox-img" src="" alt="Review photo" style="display: none;" />
+    </div>
+  </div>
+
+  <!-- Profile Modal -->
+  <div class="modal" id="profile-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-content profile-modal-content">
+      <button class="close-modal" id="profile-close-btn">&times;</button>
+      <div id="profile-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal" id="settings-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-content settings-modal-content" style="max-width: 540px;">
+      <button class="close-modal" id="settings-close-btn">&times;</button>
+      <div class="section-kicker">PREFERENCES</div>
+      <h2 class="modal-title">Account Settings</h2>
+      <form id="settings-form" class="settings-form" style="margin-top: 1.5rem;">
+        <div class="form-group">
+          <label for="settings-name" class="form-label">Full Name</label>
+          <input type="text" id="settings-name" class="form-input" placeholder="John Doe" required>
+        </div>
+        <div class="form-group">
+          <label for="settings-email" class="form-label">Email Address</label>
+          <input type="email" id="settings-email" class="form-input disabled" disabled title="Email cannot be changed">
+        </div>
+        <div class="form-group">
+          <label for="settings-phone" class="form-label">Contact Number</label>
+          <input type="tel" id="settings-phone" class="form-input" placeholder="+91 98765 43210">
+        </div>
+        <div class="form-group">
+          <label for="settings-address" class="form-label">Default Shipping Address</label>
+          <textarea id="settings-address" class="form-input" rows="3" placeholder="Apartment, Street, City, Pincode"></textarea>
+        </div>
+        <button type="submit" class="btn btn-editorial-primary btn-full">Save Changes</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Wishlist Modal -->
+  <div class="modal" id="wishlist-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-content wishlist-modal-content" style="max-width: 800px;">
+      <button class="close-modal" id="wishlist-close-btn">&times;</button>
+      <div class="section-kicker">SAVED TITLES</div>
+      <h2 class="modal-title">Your Reading Wishlist</h2>
+      <div id="wishlist-body" style="margin-top: 1.5rem;"></div>
+    </div>
+  </div>
+
+  <!-- Quick View Modal -->
+  <div class="modal" id="quick-view-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="qv-title">
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-content quick-view-modal-content">
+      <button class="close-modal" id="quick-view-close-btn" data-close-modal aria-label="Close Quick View dialog">&times;</button>
+      <div id="quick-view-body"></div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       LUXURY PUBLISHING FOOTER (Part 25)
+       ===================================================================== -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-top-grid">
+        <!-- Brand Statement Column -->
+        <div class="footer-brand-col">
+          <div class="brand-logo footer-logo">
+            <div class="brand-monogram">
+              <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
+                <path d="M4 6C4 4.89543 4.89543 4 6 4H14C15.1046 4 16 4.89543 16 6V26C16 24.8954 15.1046 24 14 24H6C4.89543 24 4 24.8954 4 26V6Z" stroke="currentColor" stroke-width="2.2"/>
+                <path d="M28 6C28 4.89543 27.1046 4 26 4H18C16.8954 4 16 4.89543 16 6V26C16 24.8954 16.8954 24 18 24H26C27.1046 24 28 24.8954 28 26V6Z" stroke="currentColor" stroke-width="2.2"/>
+              </svg>
+            </div>
+            <div class="brand-text-wrap">
+              <span class="brand-title">BOOKHAVEN</span>
+              <span class="brand-tagline">OPEN YOUR NEXT STORY</span>
+            </div>
+          </div>
+          <p class="footer-brand-mission">
+            BookHaven is an independent literary bookstore dedicated to the craft of reading. We curate books that endure, delight, and challenge the human imagination.
+          </p>
+          <div class="footer-brand-interactive">
+            <button class="replay-intro-btn" id="replay-intro-btn" title="Replay the BookHaven brand opening animation">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+              <span>Replay Brand Intro</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Navigation Columns -->
+        <div class="footer-links-col">
+          <h4 class="footer-col-title">Catalogue</h4>
+          <ul class="footer-links">
+            <li><a href="#books">All Volumes</a></li>
+            <li><a href="#bestsellers">Bestselling Titles</a></li>
+            <li><a href="#trending">Weekly Trending</a></li>
+            <li><a href="#new-arrivals">New Arrivals</a></li>
+            <li><a href="#ebooks">Digital Library</a></li>
+            <li><a href="#offers">Courtesy Offers</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-links-col">
+          <h4 class="footer-col-title">Editorial & House</h4>
+          <ul class="footer-links">
+            <li><a href="#journal">The BookHaven Journal</a></li>
+            <li><a href="#categories">Aisle Directory</a></li>
+            <li><a href="#home">Our Curators</a></li>
+            <li><a href="#home">Book packaging</a></li>
+            <li><a href="#home">Literary Circles</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-links-col">
+          <h4 class="footer-col-title">Patron Care</h4>
+          <ul class="footer-links">
+            <li><a href="#" data-action="orders">Track an Order</a></li>
+            <li><a href="#" data-action="profile">Reader Account</a></li>
+            <li><a href="#" data-action="wishlist">Reading Wishlist</a></li>
+            <li><a href="#home">Courier Delivery</a></li>
+            <li><a href="#home">Privacy & Terms</a></li>
+          </ul>
+        </div>
+
+        <!-- Newsletter Column -->
+        <div class="footer-newsletter-col">
+          <h4 class="footer-col-title">The BookHaven Letter</h4>
+          <p class="footer-newsletter-desc">Thoughtful recommendations, rare finds, and literary reflections delivered occasionally to your inbox.</p>
+          <form class="footer-newsletter-form" id="newsletter-form" onsubmit="event.preventDefault(); showNotification('Thank you for joining our literary letter.'); this.reset();">
+            <input type="email" placeholder="Your email address" class="newsletter-input" required />
+            <button type="submit" class="btn btn-editorial-primary btn-newsletter">Subscribe</button>
+          </form>
+          <div class="footer-safe-notice">No spam. Only letters worth reading.</div>
+        </div>
+      </div>
+
+      <div class="footer-bottom-bar">
+        <div class="footer-copyright">&copy; 2026 BookHaven Bookstores Ltd. All rights reserved.</div>
+        <div class="footer-bottom-links">
+          <span>Crafted for bibliophiles and curious minds.</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Notification Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="script.js?v=4"></script>
+  <script src="api.js?v=4"></script>
+</body>
+
+</html>

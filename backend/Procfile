@@ -1,0 +1,1 @@
+web: gunicorn bookhaven.wsgi:application -c gunicorn.conf.py

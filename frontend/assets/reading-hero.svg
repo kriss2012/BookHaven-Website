@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 400" width="500" height="400">
+  <defs>
+    <radialGradient id="celestialGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#F7E8C4" stop-opacity="0.25" />
+      <stop offset="60%" stop-color="#B28A4A" stop-opacity="0.08" />
+      <stop offset="100%" stop-color="#F8F5EF" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="bookCoverGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7A263A" />
+      <stop offset="100%" stop-color="#4B1220" />
+    </linearGradient>
+    <linearGradient id="goldAcc" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F8EBCB" />
+      <stop offset="50%" stop-color="#C59B3C" />
+      <stop offset="100%" stop-color="#8E6720" />
+    </linearGradient>
+    <linearGradient id="pageGleam" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#EDE6D6" />
+      <stop offset="100%" stop-color="#FFFFFF" />
+    </linearGradient>
+    <filter id="glowFilter" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background Ambient Glow -->
+  <circle cx="250" cy="220" r="180" fill="url(#celestialGlow)" />
+
+  <!-- Constellation Dots & Literary Stars -->
+  <g opacity="0.65">
+    <circle cx="90" cy="110" r="1.5" fill="#B28A4A" />
+    <circle cx="160" cy="70" r="2" fill="#B28A4A" />
+    <circle cx="340" cy="80" r="2" fill="#B28A4A" />
+    <circle cx="410" cy="120" r="1.5" fill="#B28A4A" />
+    <circle cx="250" cy="40" r="2.5" fill="#B28A4A" />
+    <!-- Small Cross Stars -->
+    <path d="M160 65 V75 M155 70 H165" stroke="#C59B3C" stroke-width="0.75" />
+    <path d="M340 75 V85 M335 80 H345" stroke="#C59B3C" stroke-width="0.75" />
+    <path d="M250 34 V46 M244 40 H256" stroke="#C59B3C" stroke-width="1" />
+  </g>
+
+  <!-- Open Floating Hardcover Book -->
+  <g transform="translate(110, 120)">
+    <!-- Book Shadow Base -->
+    <ellipse cx="140" cy="195" rx="130" ry="16" fill="#1C1C1A" opacity="0.12" filter="blur(4px)" />
+
+    <!-- Hardcover Back Shell Left -->
+    <path d="M140 70 C80 30 20 45 4 60 L14 165 C30 150 85 138 140 175 Z" fill="url(#bookCoverGrad)" />
+    <!-- Hardcover Back Shell Right -->
+    <path d="M140 70 C200 30 260 45 276 60 L266 165 C250 150 195 138 140 175 Z" fill="url(#bookCoverGrad)" />
+
+    <!-- Multiple Page Leaves (Fan Effect) -->
+    <!-- Under Leaf Left -->
+    <path d="M140 64 C85 28 30 42 12 55 L20 155 C38 142 90 132 140 168 Z" fill="#E8E0CE" stroke="#D3C9B4" stroke-width="0.5" />
+    <!-- Under Leaf Right -->
+    <path d="M140 64 C195 28 250 42 268 55 L260 155 C242 142 190 132 140 168 Z" fill="#E8E0CE" stroke="#D3C9B4" stroke-width="0.5" />
+
+    <!-- Main Top Pages Left -->
+    <path d="M140 58 C90 22 40 36 20 48 L28 148 C48 136 95 125 140 160 Z" fill="url(#pageGleam)" stroke="#D4AF37" stroke-width="0.75" />
+    <!-- Main Top Pages Right -->
+    <path d="M140 58 C190 22 240 36 260 48 L252 148 C232 136 185 125 140 160 Z" fill="url(#pageGleam)" stroke="#D4AF37" stroke-width="0.75" />
+
+    <!-- Center Spine Spine Gilding -->
+    <line x1="140" y1="56" x2="140" y2="162" stroke="url(#goldAcc)" stroke-width="3" stroke-linecap="round" />
+
+    <!-- Golden Silk Bookmark Ribbon Drape -->
+    <path d="M140 56 Q145 100 135 150 Q130 185 145 205 L150 195 L155 205 Q142 185 147 150 Z" fill="url(#goldAcc)" opacity="0.9" />
+
+    <!-- Subtle Literary Text Lines (Left Page) -->
+    <line x1="45" y1="75" x2="115" y2="65" stroke="#B28A4A" stroke-width="1.2" stroke-linecap="round" opacity="0.5" />
+    <line x1="45" y1="88" x2="120" y2="78" stroke="#8E8A82" stroke-width="1" stroke-linecap="round" opacity="0.4" />
+    <line x1="45" y1="99" x2="120" y2="89" stroke="#8E8A82" stroke-width="1" stroke-linecap="round" opacity="0.4" />
+    <line x1="45" y1="110" x2="115" y2="100" stroke="#8E8A82" stroke-width="1" stroke-linecap="round" opacity="0.4" />
+    <line x1="45" y1="121" x2="105" y2="112" stroke="#8E8A82" stroke-width="1" stroke-linecap="round" opacity="0.4" />
+
+    <!-- Subtle Literary Text Lines (Right Page) -->
+    <line x1="165" y1="65" x2="235" y2="75" stroke="#B28A4A" stroke-width="1.2" stroke-linecap="round" opacity="0.5" />
+    <line x1="160" y1="78" x2="235" y2="88" stroke="#8E8A82" stroke-width="1" stroke-linecap="round" opacity="0.4" />
+    <line x1="160" y1="89" x2="235" y2="99" stroke="#8E8A82" stroke-width="1" stroke-linecap="round" opacity="0.4" />
+    <line x1="160" y1="100" x2="235" y2="110" stroke="#8E8A82" stroke-width="1" stroke-linecap="round" opacity="0.4" />
+    <line x1="160" y1="112" x2="220" y2="121" stroke="#8E8A82" stroke-width="1" stroke-linecap="round" opacity="0.4" />
+
+    <!-- Radiant Glow Emanating from Spine -->
+    <circle cx="140" cy="56" r="14" fill="#FFFFFF" opacity="0.6" filter="url(#glowFilter)" />
+    <circle cx="140" cy="56" r="4" fill="url(#goldAcc)" />
+  </g>
+</svg>

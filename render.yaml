@@ -1,0 +1,65 @@
+services:
+  # ─── Web Service: Django REST API Backend ──────────────────────────────────
+  - type: web
+    name: bookhaven-api
+    runtime: python
+    region: oregon
+    plan: free
+    branch: main
+    rootDir: backend
+    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate"
+    startCommand: "gunicorn bookhaven.wsgi:application -c gunicorn.conf.py"
+    healthCheckPath: /api/health/
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bookhaven-db
+          property: connectionString
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com"
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: CSRF_TRUSTED_ORIGINS
+        sync: false
+      - key: CLERK_FRONTEND_API_URL
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+
+# ─── Managed PostgreSQL Database ─────────────────────────────────────────────
+databases:
+  - name: bookhaven-db
+    databaseName: bookhaven
+    user: bookhaven
+    plan: free
+    region: oregon
+
+# ─── Optional: Render Native Cron Job (Paid / Credit Tiers) ──────────────────
+# Note: Render Native Cron Jobs require an active paid plan or compute credits.
+# If you upgrade or have compute credits, uncomment this block to run the 5-min cron:
+# - type: cron
+#   name: bookhaven-cron
+#   runtime: python
+#   region: oregon
+#   plan: starter
+#   schedule: "*/5 * * * *"
+#   rootDir: backend
+#   buildCommand: "pip install -r requirements.txt"
+#   startCommand: "python manage.py scheduled_task"
+#   envVars:
+#     - key: DATABASE_URL
+#       fromDatabase:
+#         name: bookhaven-db
+#         property: connectionString
+#     - key: SECRET_KEY
+#       fromService:
+#         type: web
+#         name: bookhaven-api
+#         envVarKey: SECRET_KEY

@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 60" width="340" height="60">
+  <defs>
+    <linearGradient id="logoBurgundy" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#912E45" />
+      <stop offset="100%" stop-color="#67192A" />
+    </linearGradient>
+    <linearGradient id="logoGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F5E4BE" />
+      <stop offset="50%" stop-color="#C59B3C" />
+      <stop offset="100%" stop-color="#916D25" />
+    </linearGradient>
+  </defs>
+
+  <!-- Monogram Book Icon (Left) -->
+  <g transform="translate(6, 6)">
+    <!-- Book Outer Silhouette / Cover Base -->
+    <path d="M24 10C16 5 6 7 2 10V42C6 39 16 37 24 41V10Z" 
+          fill="url(#logoBurgundy)" 
+          stroke="url(#logoGold)" 
+          stroke-width="1.6" 
+          stroke-linejoin="round" />
+    <path d="M24 10C32 5 42 7 46 10V42C42 39 32 37 24 41V10Z" 
+          fill="url(#logoBurgundy)" 
+          stroke="url(#logoGold)" 
+          stroke-width="1.6" 
+          stroke-linejoin="round" />
+
+    <!-- Center Spine Spine Line -->
+    <line x1="24" y1="8" x2="24" y2="42" stroke="url(#logoGold)" stroke-width="2.2" stroke-linecap="round" />
+
+    <!-- Archival Ribbon Marker -->
+    <path d="M24 8V26L28 22L32 26V8" fill="url(#logoGold)" opacity="0.95" />
+
+    <!-- Inner Page Detail Accent Lines -->
+    <line x1="7" y1="18" x2="19" y2="16" stroke="url(#logoGold)" stroke-width="1.2" stroke-linecap="round" opacity="0.75" />
+    <line x1="7" y1="24" x2="19" y2="22" stroke="url(#logoGold)" stroke-width="1.2" stroke-linecap="round" opacity="0.75" />
+    <line x1="7" y1="30" x2="16" y2="28.5" stroke="url(#logoGold)" stroke-width="1.2" stroke-linecap="round" opacity="0.75" />
+
+    <line x1="29" y1="16" x2="41" y2="18" stroke="url(#logoGold)" stroke-width="1.2" stroke-linecap="round" opacity="0.75" />
+    <line x1="29" y1="22" x2="41" y2="24" stroke="url(#logoGold)" stroke-width="1.2" stroke-linecap="round" opacity="0.75" />
+    <line x1="32" y1="28.5" x2="41" y2="30" stroke="url(#logoGold)" stroke-width="1.2" stroke-linecap="round" opacity="0.75" />
+  </g>
+
+  <!-- Typography Lockup (Right) -->
+  <g transform="translate(68, 0)">
+    <!-- Brand Title in Serif -->
+    <text x="0" y="32" 
+          font-family="'Playfair Display', Georgia, 'Times New Roman', serif" 
+          font-size="24" 
+          font-weight="700" 
+          letter-spacing="3.5" 
+          fill="#1C1C1A">BOOKHAVEN</text>
+
+    <!-- Tagline in Tracked Sans-Serif -->
+    <text x="1" y="47" 
+          font-family="'Inter', -apple-system, BlinkMacSystemFont, sans-serif" 
+          font-size="7.5" 
+          font-weight="600" 
+          letter-spacing="4.5" 
+          fill="#B28A4A">OPEN YOUR NEXT STORY</text>
+  </g>
+</svg>
