@@ -78,8 +78,8 @@ class WishlistItemSerializer(serializers.ModelSerializer):
         fields = ('id', 'book', 'book_details', 'added_at')
 
     def get_book_details(self, obj):
-        from books.serializers import BookListSerializer
-        return BookListSerializer(obj.book).data
+        from books.serializers import BookSerializer
+        return BookSerializer(obj.book).data
 
 class WishlistSerializer(serializers.ModelSerializer):
     items = WishlistItemSerializer(many=True, read_only=True)

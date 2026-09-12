@@ -1,6 +1,9 @@
 // Dynamic API URL resolution for Localhost vs Production (Render)
 function getApiBaseUrl() {
   if (window.BOOKHAVEN_API_URL) return window.BOOKHAVEN_API_URL.replace(/\/+$/, '');
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return 'http://127.0.0.1:8001/api';
+  }
   return 'https://bookhaven-website.onrender.com/api';
 }
 window.getApiBaseUrl = getApiBaseUrl;
@@ -152,6 +155,8 @@ const offers = [
 let cart = [];
 window.cart = cart;
 let currentUser = null;
+window.currentUser = currentUser;
+if (!window.wishlist) window.wishlist = [];
 
 // ---- Utilities ----
 function showNotification(message, type = 'success') {
@@ -229,6 +234,21 @@ function updateUIForLoggedInUser() {
   if (logoutBtn) {
     logoutBtn.style.display = 'flex';
   }
+
+  // 5. Sync Mobile Drawer Account Section
+  const mGuest = document.getElementById('mobile-drawer-guest');
+  const mUser = document.getElementById('mobile-drawer-user');
+  const mAvatar = document.getElementById('mobile-drawer-avatar');
+  const mName = document.getElementById('mobile-drawer-user-name');
+  const mEmail = document.getElementById('mobile-drawer-user-email');
+  if (mGuest) mGuest.style.display = 'none';
+  if (mUser) mUser.style.display = 'block';
+  if (mAvatar) {
+    const displayName = (currentUser.name || currentUser.display_name || currentUser.email || 'U').trim();
+    mAvatar.textContent = displayName.charAt(0).toUpperCase();
+  }
+  if (mName) mName.textContent = currentUser.name || currentUser.display_name || 'Reader';
+  if (mEmail) mEmail.textContent = currentUser.email || '';
 }
 
 function updateUIForLoggedOutUser() {
@@ -264,7 +284,13 @@ function updateUIForLoggedOutUser() {
   if (emailEl) emailEl.textContent = 'Sign in to sync your library';
   if (logoutBtn) logoutBtn.style.display = 'none';
 
-  // 4. Reset forms
+  // 4. Sync Mobile Drawer
+  const mGuest = document.getElementById('mobile-drawer-guest');
+  const mUser = document.getElementById('mobile-drawer-user');
+  if (mGuest) mGuest.style.display = 'block';
+  if (mUser) mUser.style.display = 'none';
+
+  // 5. Reset forms
   const loginForm = document.getElementById('login-form');
   const signupForm = document.getElementById('signup-form');
   if (loginForm) loginForm.reset();
@@ -450,9 +476,13 @@ async function handleLogin(e) {
       };
     }
 
+    window.currentUser = currentUser;
     localStorage.setItem('currentUser', JSON.stringify(currentUser));
     updateUIForLoggedInUser();
     closeLogin();
+    if (window.syncCartAfterLogin) {
+      await window.syncCartAfterLogin();
+    }
     showNotification(`Welcome back, ${currentUser.name}! 👋`, 'success');
   } catch (err) {
     showAuthFieldError('login-password', 'error-login-password', 'An unexpected error occurred. Please try again.');
@@ -546,9 +576,13 @@ async function handleSignup(e) {
       currentUser = { name, email, signupDate: new Date().toISOString() };
     }
 
+    window.currentUser = currentUser;
     localStorage.setItem('currentUser', JSON.stringify(currentUser));
     updateUIForLoggedInUser();
     closeLogin();
+    if (window.syncCartAfterLogin) {
+      await window.syncCartAfterLogin();
+    }
     showNotification(`Account created! Welcome, ${name}! 🎉`, 'success');
   } catch (err) {
     showAuthFieldError('signup-confirm', 'error-signup-confirm', 'An unexpected error occurred. Please try again.');
@@ -572,9 +606,18 @@ function handleGoogleAuth() {
 
 function handleLogout() {
   currentUser = null;
+  window.currentUser = null;
   localStorage.removeItem('currentUser');
   localStorage.removeItem('bh_access_token');
   localStorage.removeItem('bh_refresh_token');
+  localStorage.removeItem('bookCart');
+  localStorage.removeItem('bookWishlist');
+  cart = [];
+  window.cart = [];
+  window.wishlist = [];
+  updateCartCount();
+  const wishCount = document.getElementById('wishlist-count');
+  if (wishCount) wishCount.textContent = '0';
   updateUIForLoggedOutUser();
   showNotification('Logged out successfully! 👋', 'success');
 }
@@ -2631,16 +2674,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const savedUser = raw ? JSON.parse(raw) : null;
     if (savedUser && typeof savedUser === 'object' && (savedUser.name || savedUser.email)) {
       currentUser = savedUser;
+      window.currentUser = savedUser;
       updateUIForLoggedInUser();
     } else {
       currentUser = null;
+      window.currentUser = null;
       updateUIForLoggedOutUser();
     }
   } catch (e) {
     localStorage.removeItem('currentUser');
     currentUser = null;
+    window.currentUser = null;
     updateUIForLoggedOutUser();
   }
+
+  // Restore cart from localStorage
+  try {
+    const rawCart = localStorage.getItem('bookCart');
+    if (rawCart) {
+      cart = JSON.parse(rawCart);
+      window.cart = cart;
+      updateCartCount();
+    }
+  } catch (_) {}
+
+  // Restore wishlist from localStorage
+  try {
+    const rawWish = localStorage.getItem('bookWishlist');
+    if (rawWish) {
+      window.wishlist = JSON.parse(rawWish);
+      const countEl = document.getElementById('wishlist-count');
+      if (countEl) countEl.textContent = window.wishlist.length;
+    }
+  } catch (_) {}
 
 
   // Render books, trending, offers, ebooks
@@ -3245,40 +3311,52 @@ function initCinematicIntro() {
   const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const introSeen = sessionStorage.getItem('bookhaven_intro_seen');
 
+  let dismissed = false;
+
   function dismissIntro() {
+    if (dismissed) return;
+    dismissed = true;
     overlay.classList.add('fade-out');
+    overlay.setAttribute('aria-hidden', 'true');
     try { video.pause(); } catch (_) {}
+    document.body.style.overflow = '';
     sessionStorage.setItem('bookhaven_intro_seen', 'true');
-    setTimeout(() => { overlay.style.display = 'none'; }, 850);
+    setTimeout(() => {
+      overlay.style.display = 'none';
+      overlay.style.pointerEvents = 'none';
+    }, 850);
   }
 
   if (prefersReduced || introSeen) {
     overlay.style.display = 'none';
+    overlay.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
   } else {
+    document.body.style.overflow = 'hidden';
     video.currentTime = 0;
     const playPromise = video.play();
     if (playPromise !== undefined) {
       playPromise.catch(() => {
-        // Autoplay restricted — dismiss cleanly
-        dismissIntro();
+        // Autoplay restricted on some mobile devices — keep Skip button active
       });
     }
 
     video.addEventListener('ended', () => {
-      setTimeout(dismissIntro, 600);
-    });
+      setTimeout(dismissIntro, 400);
+    }, { once: true });
 
-    // Fallback timer (10.5s max)
+    // Fallback timer (11s max)
     setTimeout(() => {
-      if (!overlay.classList.contains('fade-out')) {
+      if (!dismissed) {
         dismissIntro();
       }
-    }, 10500);
+    }, 11000);
   }
 
   if (skipBtn) {
     skipBtn.addEventListener('click', (e) => {
       e.preventDefault();
+      e.stopPropagation();
       dismissIntro();
     });
   }
@@ -3286,8 +3364,12 @@ function initCinematicIntro() {
   if (replayBtn) {
     replayBtn.addEventListener('click', (e) => {
       e.preventDefault();
+      dismissed = false;
       overlay.style.display = 'flex';
+      overlay.style.pointerEvents = 'auto';
       overlay.classList.remove('fade-out');
+      overlay.removeAttribute('aria-hidden');
+      document.body.style.overflow = 'hidden';
       video.currentTime = 0;
       video.play().catch(() => {});
     });

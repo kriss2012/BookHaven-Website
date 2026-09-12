@@ -31,7 +31,11 @@
 
   <!-- Global API Backend URL & Payment Gateway Configuration -->
   <script>
-    window.BOOKHAVEN_API_URL = 'https://bookhaven-website.onrender.com/api';
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      window.BOOKHAVEN_API_URL = 'http://127.0.0.1:8001/api';
+    } else {
+      window.BOOKHAVEN_API_URL = 'https://bookhaven-website.onrender.com/api';
+    }
     window.RAZORPAY_KEY_ID = 'rzp_test_TaeA7VnqRyVNqD';
   </script>
 
@@ -52,6 +56,10 @@
         <source src="Intro.mp4" type="video/mp4">
       </video>
       <div class="intro-vignette"></div>
+    </div>
+    <div class="intro-mobile-branding" aria-hidden="true">
+      <span class="intro-brand-title">BOOKHAVEN</span>
+      <span class="intro-brand-sub">OPEN YOUR NEXT STORY</span>
     </div>
     <div class="intro-controls">
       <button id="skip-intro-btn" class="skip-intro-btn" aria-label="Skip cinematic introduction">
@@ -189,15 +197,35 @@
       <span class="brand-title">BOOKHAVEN</span>
       <button class="mobile-nav-close" id="mobile-nav-close" aria-label="Close menu">&times;</button>
     </div>
+    <!-- Mobile Drawer Account Section -->
+    <div class="mobile-drawer-account" id="mobile-drawer-account">
+      <div class="mobile-drawer-guest" id="mobile-drawer-guest">
+        <button class="btn btn-primary btn-block" id="mobile-login-btn" onclick="openLogin(); closeMobileNav();">Sign In / Register</button>
+      </div>
+      <div class="mobile-drawer-user" id="mobile-drawer-user" style="display: none;">
+        <div class="mobile-drawer-user-meta">
+          <div class="user-avatar mobile-drawer-avatar" id="mobile-drawer-avatar">U</div>
+          <div class="mobile-drawer-user-details">
+            <div class="mobile-drawer-user-name" id="mobile-drawer-user-name">Reader</div>
+            <div class="mobile-drawer-user-email" id="mobile-drawer-user-email">reader@bookhaven.com</div>
+          </div>
+        </div>
+        <div class="mobile-drawer-user-links">
+          <button class="btn btn-outline btn-sm" onclick="openProfile(); closeMobileNav();">Profile</button>
+          <button class="btn btn-outline btn-sm" onclick="openOrdersModal(); closeMobileNav();">Orders</button>
+          <button class="btn btn-outline btn-sm" onclick="handleLogout(); closeMobileNav();">Sign Out</button>
+        </div>
+      </div>
+    </div>
     <ul class="mobile-nav-links">
-      <li><a href="#home">Home</a></li>
-      <li><a href="#books">All Books</a></li>
-      <li><a href="#categories">Browse Categories</a></li>
-      <li><a href="#bestsellers">Bestsellers</a></li>
-      <li><a href="#trending">Trending Titles</a></li>
-      <li><a href="#journal">BookHaven Journal</a></li>
-      <li><a href="#offers">Curated Offers</a></li>
-      <li><a href="#ebooks">eBook Library</a></li>
+      <li><a href="#home" onclick="closeMobileNav()">Home</a></li>
+      <li><a href="#books" onclick="closeMobileNav()">All Books</a></li>
+      <li><a href="#categories" onclick="closeMobileNav()">Browse Categories</a></li>
+      <li><a href="#bestsellers" onclick="closeMobileNav()">Bestsellers</a></li>
+      <li><a href="#trending" onclick="closeMobileNav()">Trending Titles</a></li>
+      <li><a href="#journal" onclick="closeMobileNav()">BookHaven Journal</a></li>
+      <li><a href="#offers" onclick="closeMobileNav()">Curated Offers</a></li>
+      <li><a href="#ebooks" onclick="closeMobileNav()">eBook Library</a></li>
     </ul>
   </div>
   <div class="drawer-backdrop" id="drawer-backdrop"></div>

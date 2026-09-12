@@ -12,7 +12,7 @@
   'use strict';
 
   // ─── Config ─────────────────────────────────────────────────────────────────
-  const API_BASE = (window.BOOKHAVEN_API_URL || 'https://bookhaven-website.onrender.com/api').replace(/\/+$/, '');
+  const API_BASE = (window.BOOKHAVEN_API_URL || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://127.0.0.1:8001/api' : 'https://bookhaven-website.onrender.com/api')).replace(/\/+$/, '');
   const CLERK_PUBLISHABLE_KEY = 'pk_test_cmVhZHktc3RhZy0xMDIzLmNsZXJrLmFjY291bnRzLmRldiQ';
   window.wishlist = [];
 
@@ -199,16 +199,6 @@
    * itself is the initialized clerk instance.
    */
   (function bootClerk() {
-    // Clear stale pre-Clerk localStorage sessions immediately so they don't
-    // flash a phantom avatar before Clerk's auth state is known.
-    const cachedUser = (() => { try { return JSON.parse(localStorage.getItem('currentUser') || 'null'); } catch { return null; } })();
-    const isLegacySession = cachedUser && !cachedUser.clerk_user_id && !cachedUser.id;
-    if (isLegacySession) {
-      console.info('[BookHaven] Clearing stale pre-Clerk session from localStorage.');
-      clearTokens();
-      localStorage.removeItem('currentUser');
-    }
-
     const TIMEOUT = 10000; // 10 s
     const start = Date.now();
 
@@ -347,11 +337,14 @@
 
   // Patch filter pills to use API
   document.addEventListener('DOMContentLoaded', async () => {
-    // Load books first, then trending (trending needs window.books to be set)
+    // 1. Restore session, cart, and wishlist immediately
+    await restoreSession();
+
+    // 2. Load books and trending
     await fetchAndRenderBooks('all');
     await fetchAndRenderTrending();
 
-    // Patch filter pills
+    // 3. Patch filter pills
     document.querySelectorAll('.filter-pill').forEach(pill => {
       pill.addEventListener('click', () => {
         const cat = pill.dataset.category || 'all';
@@ -359,14 +352,11 @@
       });
     });
 
-    // Offers from API
+    // 4. Offers from API
     fetchAndRenderOffers();
 
-    // eBooks section from API
+    // 5. eBooks section from API
     fetchAndRenderEbooks();
-
-    // Restore session from localStorage token
-    restoreSession();
   });
 
   async function fetchAndRenderTrending() {
@@ -438,21 +428,50 @@
   }
 
   function updateWishlistUI() {
+    const list = window.wishlist || [];
+    const countEl = document.getElementById('wishlist-count');
+    if (countEl) countEl.textContent = list.length;
+    localStorage.setItem('bookWishlist', JSON.stringify(list));
+
     // Update the heart buttons on book cards
-    document.querySelectorAll('.wishlist-btn').forEach(btn => {
+    document.querySelectorAll('.book-wishlist-btn, .wishlist-btn').forEach(btn => {
       const bid = Number(btn.dataset.wishlistBook);
-      const isWishlisted = window.wishlist.some(w => w.book === bid);
-      btn.style.color = isWishlisted ? '#ef4444' : 'inherit';
-      btn.innerHTML = isWishlisted ? '❤️' : '🤍';
+      const isWishlisted = list.some(w => {
+        if (typeof w === 'number') return w === bid;
+        if (typeof w === 'string') return String(w) === String(bid);
+        if (w && w.book) return (typeof w.book === 'object' ? w.book.id === bid : w.book === bid);
+        return false;
+      });
+      btn.classList.toggle('active', isWishlisted);
+      const svg = btn.querySelector('svg');
+      if (svg) svg.setAttribute('fill', isWishlisted ? 'currentColor' : 'none');
+      if (btn.classList.contains('wishlist-btn') && !svg) {
+        btn.innerHTML = isWishlisted ? '❤️' : '🤍';
+      }
     });
+
     // Re-render modal if open
     if (window.renderWishlistItems) window.renderWishlistItems();
   }
 
   window.toggleWishlist = async function (bookId) {
-    if (!getToken()) {
-      showNotification('Please login to use the wishlist 🔐', 'info');
-      openLogin();
+    const token = getToken();
+    if (!token) {
+      // Guest local wishlist
+      let list = Array.isArray(window.wishlist) ? [...window.wishlist] : [];
+      const numId = Number(bookId);
+      const idx = list.findIndex(w => (typeof w === 'number' ? w === numId : (w.book === numId || (w.book && w.book.id === numId))));
+      let action = 'added';
+      if (idx !== -1) {
+        list.splice(idx, 1);
+        action = 'removed';
+      } else {
+        const book = (window.books || []).find(b => b.id === numId) || { id: numId, title: 'Book' };
+        list.push({ id: Date.now(), book: numId, book_details: book });
+      }
+      window.wishlist = list;
+      updateWishlistUI();
+      showNotification(`Book ${action} from wishlist.`, 'info');
       return;
     }
     const { ok, data } = await apiRequest('POST', '/orders/wishlist/toggle/', { book_id: bookId }, true);
@@ -775,36 +794,111 @@
   };
 
   // ─── Session restore ─────────────────────────────────────────────────────────
-  // Clerk's addListener (set up in initClerkAuth) is the authoritative session
-  // source and runs automatically on page load.
-  // restoreSession() provides a fast, optimistic UI restore from the localStorage
-  // cache so the avatar/name appear instantly — before Clerk's async check completes.
   async function restoreSession() {
     const cachedUser = localStorage.getItem('currentUser');
-    if (!cachedUser) {
-      if (typeof updateUIForLoggedOutUser === 'function') updateUIForLoggedOutUser();
-      return;
+    const token = getToken();
+
+    // 1. Optimistic UI restore from localStorage cache
+    if (cachedUser) {
+      try {
+        const parsed = JSON.parse(cachedUser);
+        if (parsed && typeof parsed === 'object' && (parsed.name || parsed.email)) {
+          currentUser = parsed;
+          window.currentUser = currentUser;
+          if (typeof updateUIForLoggedInUser === 'function') updateUIForLoggedInUser();
+        }
+      } catch (_) {
+        currentUser = null;
+        window.currentUser = null;
+      }
     }
 
+    // 2. Restore local cart & wishlist optimistically so data never disappears
     try {
-      currentUser = JSON.parse(cachedUser);
-      if (currentUser && (currentUser.name || currentUser.email)) {
+      const localCart = localStorage.getItem('bookCart');
+      if (localCart) {
+        cart = JSON.parse(localCart);
+        window.cart = cart;
+        updateCartCount();
+      }
+    } catch (_) {}
+
+    try {
+      const localWish = localStorage.getItem('bookWishlist');
+      if (localWish) {
+        window.wishlist = JSON.parse(localWish);
+        updateWishlistUI();
+      }
+    } catch (_) {}
+
+    // 3. Verify session with backend if token exists
+    if (token) {
+      let { ok, status, data } = await apiRequest('GET', '/auth/me/', null, true);
+
+      // If access token expired (401), try token refresh
+      if (!ok && status === 401) {
+        const refreshed = await tryRefreshToken();
+        if (refreshed) {
+          const retry = await apiRequest('GET', '/auth/me/', null, true);
+          ok = retry.ok;
+          status = retry.status;
+          data = retry.data;
+        }
+      }
+
+      if (ok && data && (data.email || data.id)) {
+        // Authoritative user profile confirmed
+        currentUser = {
+          ...(currentUser || {}),
+          ...data,
+          name: data.display_name || data.name || (currentUser && currentUser.name) || data.email.split('@')[0],
+          email: data.email,
+        };
+        window.currentUser = currentUser;
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
         if (typeof updateUIForLoggedInUser === 'function') updateUIForLoggedInUser();
-      } else {
+
+        // Synchronize user cart & wishlist from server
+        await syncCartFromServer();
+        await syncWishlistFromServer();
+      } else if (status === 401 || status === 403) {
+        // Backend confirmed token is truly invalid/expired and refresh failed
         clearTokens();
         localStorage.removeItem('currentUser');
         currentUser = null;
+        window.currentUser = null;
         if (typeof updateUIForLoggedOutUser === 'function') updateUIForLoggedOutUser();
       }
-    } catch (_) {
-      clearTokens();
-      localStorage.removeItem('currentUser');
-      currentUser = null;
+      // If status === 0 (network failure / server sleeping), keep optimistic local session!
+    } else if (!currentUser) {
       if (typeof updateUIForLoggedOutUser === 'function') updateUIForLoggedOutUser();
     }
   }
 
-  // tryRefreshToken is kept for backward compat with simplejwt token flow
+  // Helper to merge guest cart and sync wishlist after login/signup
+  window.syncCartAfterLogin = async function () {
+    const token = getToken();
+    if (!token) return;
+    try {
+      const localCart = localStorage.getItem('bookCart');
+      if (localCart) {
+        const parsed = JSON.parse(localCart);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          for (const item of parsed) {
+            await apiRequest('POST', '/orders/cart/add/', {
+              book_id: item.id,
+              format: item.format || 'physical',
+              quantity: item.quantity || 1
+            }, true);
+          }
+        }
+      }
+    } catch (_) {}
+    await syncCartFromServer();
+    await syncWishlistFromServer();
+  };
+
+  // tryRefreshToken with automatic retry and token rotation
   async function tryRefreshToken() {
     const refresh = localStorage.getItem('bh_refresh_token');
     if (!refresh) return false;
@@ -818,7 +912,6 @@
       const result = await res.json();
       if (result.access) {
         localStorage.setItem('bh_access_token', result.access);
-        // ROTATE_REFRESH_TOKENS=True means the server may issue a new refresh token too
         if (result.refresh) localStorage.setItem('bh_refresh_token', result.refresh);
         return true;
       }
