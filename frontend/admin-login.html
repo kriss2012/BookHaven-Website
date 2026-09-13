@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BookHaven — Admin sign in</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1C232E;
+    --paper: #F5F1E7;
+    --paper-raised: #FFFFFF;
+    --wine: #7B2D26;
+    --wine-dark: #5E211C;
+    --danger: #A33D3D;
+    --danger-bg: #F5E7E5;
+    --slate: #6B7280;
+    --border: #E4DCC8;
+    --font-serif: 'Source Serif 4', Georgia, serif;
+    --font-sans: 'Inter', -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-sans);
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .card {
+    width: 100%;
+    max-width: 380px;
+    background: var(--paper-raised);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 34px 30px;
+  }
+  .mark { font-family: var(--font-serif); font-size: 1.5rem; font-weight: 600; }
+  .sub { font-size: 0.85rem; color: var(--slate); margin-top: 4px; margin-bottom: 26px; }
+  .field { margin-bottom: 16px; display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 0.8rem; color: var(--slate); font-weight: 500; }
+  .field input {
+    padding: 10px 12px; border: 1px solid var(--border); border-radius: 7px;
+    font-family: var(--font-sans); font-size: 0.92rem; background: var(--paper);
+  }
+  .field input:focus { outline: 2px solid var(--wine); outline-offset: 1px; }
+  .row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .checkbox { display: flex; align-items: center; gap: 7px; font-size: 0.82rem; color: var(--slate); }
+  .btn {
+    width: 100%; font-family: var(--font-sans); font-size: 0.92rem; font-weight: 600;
+    padding: 11px 14px; border-radius: 8px; border: none; cursor: pointer;
+    background: var(--wine); color: #fff; transition: background .15s ease;
+  }
+  .btn:hover { background: var(--wine-dark); }
+  .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .error {
+    display: none; background: var(--danger-bg); color: var(--danger);
+    font-size: 0.82rem; padding: 10px 12px; border-radius: 7px; margin-bottom: 16px;
+  }
+  .error.active { display: block; }
+  .foot { text-align: center; font-size: 0.78rem; color: var(--slate); margin-top: 20px; }
+  .spinner {
+    display: none; width: 15px; height: 15px; border: 2px solid rgba(255,255,255,0.35);
+    border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite;
+    margin: 0 auto;
+  }
+  .btn.loading .label { display: none; }
+  .btn.loading .spinner { display: block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+  <form class="card" id="login-form" novalidate>
+    <div class="mark">BookHaven</div>
+    <div class="sub">Admin console — sign in to continue</div>
+
+    <div class="error" id="error-box"></div>
+
+    <div class="field">
+      <label for="email">Email</label>
+      <input type="email" id="email" autocomplete="username" required>
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" autocomplete="current-password" required>
+    </div>
+    <div class="row">
+      <label class="checkbox"><input type="checkbox" id="show-pw"> Show password</label>
+    </div>
+
+    <button class="btn" type="submit" id="submit-btn">
+      <span class="label">Sign in</span>
+      <span class="spinner"></span>
+    </button>
+
+    <div class="foot">Admin access only. Contact your store owner if you need an account.</div>
+  </form>
+
+<script src="admin-api.js"></script>
+<script>
+  // If already signed in with a valid admin session, skip straight to the dashboard.
+  (async () => {
+    if (BookHavenAdmin.isAuthenticated()) {
+      try {
+        const user = await BookHavenAdmin.fetchMe();
+        if (BookHavenAdmin.isAdminUser(user)) {
+          location.href = new URLSearchParams(location.search).get('next') || 'admin.html';
+        }
+      } catch { /* fall through to the login form */ }
+    }
+  })();
+
+  const form = document.getElementById('login-form');
+  const errorBox = document.getElementById('error-box');
+  const submitBtn = document.getElementById('submit-btn');
+  const pwInput = document.getElementById('password');
+
+  document.getElementById('show-pw').addEventListener('change', (e) => {
+    pwInput.type = e.target.checked ? 'text' : 'password';
+  });
+
+  function showError(msg) {
+    errorBox.textContent = msg;
+    errorBox.classList.add('active');
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errorBox.classList.remove('active');
+    const email = document.getElementById('email').value.trim();
+    const password = pwInput.value;
+    if (!email || !password) { showError('Enter your email and password.'); return; }
+
+    submitBtn.disabled = true;
+    submitBtn.classList.add('loading');
+    try {
+      const user = await BookHavenAdmin.login(email, password);
+      if (!BookHavenAdmin.isAdminUser(user)) {
+        BookHavenAdmin.tokens.clear();
+        showError('This account does not have admin access.');
+        return;
+      }
+      const next = new URLSearchParams(location.search).get('next');
+      location.href = next || 'admin.html';
+    } catch (err) {
+      if (err.code === 'AUTHENTICATION_REQUIRED' || err.status === 401 || err.status === 400) {
+        showError('Incorrect email or password.');
+      } else if (err.code === 'NETWORK_ERROR') {
+        showError('Could not reach the server. Check your connection and try again.');
+      } else {
+        showError(err.message || 'Something went wrong. Please try again.');
+      }
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.classList.remove('loading');
+    }
+  });
+</script>
+</body>
+</html>
