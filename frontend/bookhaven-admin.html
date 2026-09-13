@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BookHaven — Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1C232E;
+    --ink-soft: #2A3342;
+    --paper: #F5F1E7;
+    --paper-raised: #FFFFFF;
+    --wine: #7B2D26;
+    --wine-dark: #5E211C;
+    --gold: #A9832E;
+    --sage: #4C6B49;
+    --sage-bg: #E7EFE3;
+    --danger: #A33D3D;
+    --danger-bg: #F5E7E5;
+    --amber: #93650F;
+    --amber-bg: #FBF0DD;
+    --slate: #6B7280;
+    --border: #E4DCC8;
+    --font-serif: 'Source Serif 4', Georgia, serif;
+    --font-sans: 'Inter', -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-sans);
+    background: var(--paper);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  .app { display: flex; min-height: 100vh; }
+
+  /* Sidebar */
+  .sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    background: var(--ink);
+    color: rgba(237,231,216,0.85);
+    padding: 28px 18px;
+    display: flex;
+    flex-direction: column;
+  }
+  .brand { padding: 0 8px 28px; border-bottom: 1px solid rgba(237,231,216,0.12); margin-bottom: 20px; }
+  .brand .mark { font-family: var(--font-serif); font-size: 1.4rem; font-weight: 600; color: #fff; }
+  .brand .sub { font-size: 0.78rem; color: rgba(237,231,216,0.5); margin-top: 3px; }
+  nav.sidebar-nav { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+  .nav-item {
+    display: flex; align-items: center; gap: 11px;
+    padding: 10px 12px; border-radius: 7px;
+    color: rgba(237,231,216,0.7);
+    font-size: 0.9rem; cursor: pointer;
+    transition: background .15s ease, color .15s ease;
+    border: none; background: none; text-align: left; width: 100%;
+    font-family: var(--font-sans);
+  }
+  .nav-item svg { width: 17px; height: 17px; flex-shrink: 0; opacity: 0.9; }
+  .nav-item:hover { background: rgba(255,255,255,0.06); color: #fff; }
+  .nav-item.active { background: var(--wine); color: #fff; }
+  .sidebar-footer {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 10px 0; margin-top: 12px;
+    border-top: 1px solid rgba(237,231,216,0.12);
+  }
+  .avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--gold); color: var(--ink);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 0.85rem; flex-shrink: 0;
+  }
+  .sidebar-footer .who { font-size: 0.82rem; }
+  .sidebar-footer .role { font-size: 0.72rem; color: rgba(237,231,216,0.5); }
+
+  /* Main */
+  .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 22px 36px; background: var(--paper-raised);
+    border-bottom: 1px solid var(--border);
+  }
+  .topbar h1 { font-family: var(--font-serif); font-size: 1.4rem; font-weight: 600; }
+  .topbar .date { font-size: 0.82rem; color: var(--slate); margin-top: 2px; }
+
+  .panel { display: none; padding: 30px 36px 60px; }
+  .panel.active { display: block; }
+
+  /* Overview */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
+  .stat-card { background: var(--paper-raised); border: 1px solid var(--border); border-radius: 9px; padding: 18px 20px; }
+  .stat-card .label { font-size: 0.78rem; color: var(--slate); margin-bottom: 10px; }
+  .stat-card .value { font-family: var(--font-serif); font-size: 1.65rem; font-weight: 600; }
+  .stat-card .note { font-size: 0.76rem; margin-top: 6px; color: var(--slate); }
+  .stat-card .note.warn { color: var(--amber); }
+  .stat-card .note.alert { color: var(--danger); }
+
+  .section-title { font-family: var(--font-serif); font-size: 1.1rem; font-weight: 600; margin-bottom: 14px; }
+  .two-col { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; align-items: start; }
+
+  .mini-list { background: var(--paper-raised); border: 1px solid var(--border); border-radius: 9px; overflow: hidden; }
+  .mini-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 0.87rem; }
+  .mini-row:last-child { border-bottom: none; }
+  .mini-row .who { font-weight: 500; }
+  .mini-row .sub { color: var(--slate); font-size: 0.78rem; }
+
+  /* Tables */
+  .card { background: var(--paper-raised); border: 1px solid var(--border); border-radius: 9px; overflow: hidden; }
+  .card-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 18px; border-bottom: 1px solid var(--border); }
+  .card-head h2 { font-family: var(--font-serif); font-size: 1.05rem; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 0.75rem; color: var(--slate); font-weight: 600; padding: 11px 18px; background: #FBF9F2; border-bottom: 1px solid var(--border); }
+  td { padding: 12px 18px; border-bottom: 1px solid var(--border); font-size: 0.87rem; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  .book-cell { display: flex; align-items: center; gap: 10px; }
+  .cover-chip { width: 30px; height: 40px; border-radius: 3px; flex-shrink: 0; background: var(--wine); }
+  .book-cell .title { font-weight: 500; }
+  .book-cell .author { font-size: 0.78rem; color: var(--slate); }
+
+  .badge { display: inline-block; padding: 3px 11px; border-radius: 100px; font-size: 0.76rem; font-weight: 500; }
+  .badge.in-stock { background: var(--sage-bg); color: var(--sage); }
+  .badge.low-stock { background: var(--amber-bg); color: var(--amber); }
+  .badge.out-stock { background: var(--danger-bg); color: var(--danger); }
+  .badge.pending { background: var(--amber-bg); color: var(--amber); }
+  .badge.approved { background: var(--sage-bg); color: var(--sage); }
+  .badge.banned { background: var(--danger-bg); color: var(--danger); }
+  .badge.active-acc { background: var(--sage-bg); color: var(--sage); }
+
+  select.status-select {
+    font-family: var(--font-sans); font-size: 0.82rem; padding: 5px 8px;
+    border-radius: 6px; border: 1px solid var(--border); background: var(--paper-raised); color: var(--ink);
+  }
+
+  .btn { font-family: var(--font-sans); font-size: 0.83rem; padding: 7px 14px; border-radius: 6px; border: 1px solid transparent; cursor: pointer; font-weight: 500; }
+  .btn-primary { background: var(--wine); color: #fff; }
+  .btn-primary:hover { background: var(--wine-dark); }
+  .btn-ghost { background: transparent; border-color: var(--border); color: var(--ink); }
+  .btn-ghost:hover { background: var(--paper); }
+  .btn-text { background: none; border: none; color: var(--wine); font-size: 0.82rem; cursor: pointer; padding: 4px 6px; font-weight: 500; }
+  .btn-text.danger { color: var(--danger); }
+  .row-actions { display: flex; gap: 4px; }
+
+  .stars { color: var(--gold); letter-spacing: 1px; font-size: 0.9rem; }
+  .review-text { font-size: 0.85rem; color: var(--ink-soft); max-width: 340px; }
+
+  /* Modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(28,35,46,0.55); display: none; align-items: center; justify-content: center; z-index: 60; }
+  .modal-overlay.active { display: flex; }
+  .modal { background: var(--paper-raised); border-radius: 10px; padding: 26px; width: 420px; max-width: 90vw; }
+  .modal h2 { font-family: var(--font-serif); font-size: 1.15rem; margin-bottom: 18px; }
+  .field { margin-bottom: 13px; display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 0.78rem; color: var(--slate); }
+  .field input, .field select { padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-family: var(--font-sans); font-size: 0.88rem; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+
+  .empty { text-align: center; padding: 40px 20px; color: var(--slate); font-size: 0.88rem; }
+
+  @media (max-width: 900px) {
+    .sidebar { width: 76px; padding: 20px 10px; }
+    .brand .sub, .nav-item span, .sidebar-footer .who, .sidebar-footer .role { display: none; }
+    .brand { text-align: center; }
+    .nav-item { justify-content: center; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .two-col { grid-template-columns: 1fr; }
+    .topbar, .panel { padding-left: 20px; padding-right: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="mark">BookHaven</div>
+      <div class="sub">Admin console</div>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-item active" data-panel="overview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="10" width="8" height="11" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/></svg>
+        <span>Overview</span>
+      </button>
+      <button class="nav-item" data-panel="catalog">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5.5C4 4.7 4.7 4 5.5 4H11v16H5.5c-.8 0-1.5-.7-1.5-1.5v-13z"/><path d="M20 5.5C20 4.7 19.3 4 18.5 4H13v16h5.5c.8 0 1.5-.7 1.5-1.5v-13z"/></svg>
+        <span>Catalog</span>
+      </button>
+      <button class="nav-item" data-panel="orders">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 3h12v17l-2.5-1.5L13 20l-2.5-1.5L8 20l-2-1.5V3z"/><path d="M9 8h6M9 12h6"/></svg>
+        <span>Orders</span>
+      </button>
+      <button class="nav-item" data-panel="reviews">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l2.7 5.8 6.3.6-4.7 4.3 1.3 6.2L12 16.9 6.4 19.9l1.3-6.2L3 9.4l6.3-.6L12 3z"/></svg>
+        <span>Reviews</span>
+      </button>
+      <button class="nav-item" data-panel="accounts">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c0-3 2.5-5.2 5.5-5.2S14.5 16 14.5 19"/><circle cx="17" cy="8.5" r="2.4"/><path d="M15.8 13.3c2.6.3 4.7 2.3 4.7 5.1"/></svg>
+        <span>Accounts</span>
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="avatar">SA</div>
+      <div>
+        <div class="who">Store Admin</div>
+        <div class="role">Full access</div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div>
+        <h1 id="page-title">Overview</h1>
+        <div class="date" id="page-date"></div>
+      </div>
+      <button class="btn btn-primary" id="add-book-shortcut">Add book</button>
+    </header>
+
+    <!-- OVERVIEW -->
+    <section class="panel active" id="panel-overview">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="label">Revenue (30 days)</div>
+          <div class="value" id="stat-revenue">₹0</div>
+          <div class="note" id="stat-revenue-note"></div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Orders (30 days)</div>
+          <div class="value" id="stat-orders">0</div>
+          <div class="note" id="stat-orders-note"></div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Low / out of stock</div>
+          <div class="value" id="stat-stock">0</div>
+          <div class="note warn">Needs restocking</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Reviews awaiting moderation</div>
+          <div class="value" id="stat-reviews">0</div>
+          <div class="note" id="stat-reviews-note"></div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div>
+          <div class="section-title">Recent orders</div>
+          <div class="mini-list" id="recent-orders"></div>
+        </div>
+        <div>
+          <div class="section-title">Stock to watch</div>
+          <div class="mini-list" id="stock-watch"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CATALOG -->
+    <section class="panel" id="panel-catalog">
+      <div class="card">
+        <div class="card-head">
+          <h2>Catalog</h2>
+          <button class="btn btn-primary" id="add-book-btn">Add book</button>
+        </div>
+        <table>
+          <thead><tr><th>Title</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr></thead>
+          <tbody id="catalog-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ORDERS -->
+    <section class="panel" id="panel-orders">
+      <div class="card">
+        <div class="card-head"><h2>Orders</h2></div>
+        <table>
+          <thead><tr><th>Order</th><th>Customer</th><th>Date</th><th>Items</th><th>Total</th><th>Status</th></tr></thead>
+          <tbody id="orders-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- REVIEWS -->
+    <section class="panel" id="panel-reviews">
+      <div class="card">
+        <div class="card-head"><h2>Reviews</h2></div>
+        <table>
+          <thead><tr><th>Book</th><th>Reviewer</th><th>Rating</th><th>Review</th><th>Status</th><th></th></tr></thead>
+          <tbody id="reviews-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ACCOUNTS -->
+    <section class="panel" id="panel-accounts">
+      <div class="card">
+        <div class="card-head"><h2>Accounts</h2></div>
+        <table>
+          <thead><tr><th>Name</th><th>Email</th><th>Joined</th><th>Role</th><th>Status</th><th></th></tr></thead>
+          <tbody id="accounts-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- Add / Edit Book Modal -->
+<div class="modal-overlay" id="book-modal">
+  <div class="modal">
+    <h2 id="book-modal-title">Add book</h2>
+    <div class="field"><label>Title</label><input type="text" id="f-title"></div>
+    <div class="field-row">
+      <div class="field"><label>Author</label><input type="text" id="f-author"></div>
+      <div class="field"><label>Price (₹)</label><input type="number" id="f-price"></div>
+    </div>
+    <div class="field"><label>Stock quantity</label><input type="number" id="f-stock"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="book-modal-cancel">Cancel</button>
+      <button class="btn btn-primary" id="book-modal-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   INTEGRATION NOTES — read before wiring this to the real backend
+   =========================================================================
+   Everything below runs on mock, in-memory data so you can see the whole
+   dashboard working immediately. To connect it to BookHaven's real DRF API:
+
+   1. Replace each `state.x = [...]` block with a loader that fetches from
+      your existing endpoints, e.g.:
+
+        async function loadBooks() {
+          const res = await fetch('/api/catalog/books/', {
+            headers: { 'Authorization': `Bearer ${adminToken}` }
+          });
+          state.books = await res.json();
+          renderCatalog();
+        }
+
+      Do the same for orders (/api/orders/), reviews (/api/reviews/),
+      and accounts (/api/accounts/users/) — call each loader once on
+      page load instead of using the seed data below.
+
+   2. Every action here (addBook, updateOrderStatus, approveReview,
+      toggleBan, etc.) currently just mutates the local `state` object.
+      Swap the state mutation for a fetch call (POST/PATCH/DELETE) to the
+      matching endpoint, then re-render from the response.
+
+   3. Protect these actions server-side with an admin-only DRF permission
+      (e.g. IsAdminUser or a custom role check) on the relevant viewsets —
+      this page hiding the "Accounts" tab from non-admins is a UX nicety,
+      not a security boundary.
+
+   4. `adminToken` below is a placeholder. Get it from wherever BookHaven
+      already stores the logged-in admin's auth token (or JWT) after login,
+      and gate access to this whole page behind an admin login check.
+   ========================================================================= */
+
+  const adminToken = null; // TODO: wire up real admin auth token
+
+  const state = {
+    books: [
+      { id: 'b1', title: 'The Alchemist', author: 'Paulo Coelho', price: 349, stock: 42 },
+      { id: 'b2', title: 'Sapiens', author: 'Yuval Noah Harari', price: 499, stock: 6 },
+      { id: 'b3', title: 'Atomic Habits', author: 'James Clear', price: 399, stock: 0 },
+      { id: 'b4', title: '1984', author: 'George Orwell', price: 299, stock: 25 },
+      { id: 'b5', title: 'The Silent Patient', author: 'Alex Michaelides', price: 349, stock: 3 },
+      { id: 'b6', title: 'Ikigai', author: 'Héctor García', price: 279, stock: 18 },
+      { id: 'b7', title: 'Educated', author: 'Tara Westover', price: 399, stock: 30 },
+      { id: 'b8', title: 'Pride and Prejudice', author: 'Jane Austen', price: 199, stock: 55 },
+    ],
+    orders: [
+      { id: 'BH-10231', customer: 'Ananya Rao', date: '2026-09-11', items: 2, total: 848, status: 'Pending' },
+      { id: 'BH-10230', customer: 'Rohan Mehta', date: '2026-09-11', items: 1, total: 349, status: 'Processing' },
+      { id: 'BH-10229', customer: 'Priya Nair', date: '2026-09-10', items: 3, total: 1097, status: 'Shipped' },
+      { id: 'BH-10228', customer: 'Karan Shah', date: '2026-09-09', items: 1, total: 499, status: 'Delivered' },
+      { id: 'BH-10227', customer: 'Fatima Sheikh', date: '2026-09-08', items: 2, total: 578, status: 'Delivered' },
+      { id: 'BH-10226', customer: 'Vikram Singh', date: '2026-09-07', items: 1, total: 399, status: 'Cancelled' },
+    ],
+    reviews: [
+      { id: 'r1', book: 'Atomic Habits', reviewer: 'Sneha Patil', rating: 5, text: 'Genuinely changed how I plan my week.', status: 'pending' },
+      { id: 'r2', book: 'The Alchemist', reviewer: 'Aditya Kumar', text: 'A bit slow in the middle but the ending lands well.', rating: 4, status: 'pending' },
+      { id: 'r3', book: '1984', reviewer: 'Meera Iyer', rating: 5, text: 'As relevant now as ever. Fast shipping too.', status: 'approved' },
+      { id: 'r4', book: 'Ikigai', reviewer: 'Farhan Ali', rating: 3, text: 'Interesting ideas, felt a little repetitive.', status: 'pending' },
+      { id: 'r5', book: 'Sapiens', reviewer: 'Divya Menon', rating: 5, text: 'Dense but worth every page. Loved the packaging.', status: 'approved' },
+    ],
+    accounts: [
+      { id: 'u1', name: 'Ananya Rao', email: 'ananya.rao@example.com', joined: '2025-11-02', role: 'Customer', status: 'active' },
+      { id: 'u2', name: 'Rohan Mehta', email: 'rohan.mehta@example.com', joined: '2025-12-14', role: 'Customer', status: 'active' },
+      { id: 'u3', name: 'Priya Nair', email: 'priya.nair@example.com', joined: '2026-01-20', role: 'Customer', status: 'active' },
+      { id: 'u4', name: 'Karan Shah', email: 'karan.shah@example.com', joined: '2026-02-05', role: 'Customer', status: 'banned' },
+      { id: 'u5', name: 'Store Admin', email: 'admin@bookhaven.example', joined: '2025-06-01', role: 'Admin', status: 'active' },
+      { id: 'u6', name: 'Fatima Sheikh', email: 'fatima.sheikh@example.com', joined: '2026-03-11', role: 'Customer', status: 'active' },
+    ],
+  };
+
+  const rupee = (n) => '₹' + n.toLocaleString('en-IN');
+  const fmtDate = (d) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+  function stockBadge(stock) {
+    if (stock === 0) return '<span class="badge out-stock">Out of stock</span>';
+    if (stock <= 8) return '<span class="badge low-stock">Low stock</span>';
+    return '<span class="badge in-stock">In stock</span>';
+  }
+
+  function orderStatusOptions(current) {
+    const options = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
+    return options.map(o => `<option value="${o}" ${o === current ? 'selected' : ''}>${o}</option>`).join('');
+  }
+
+  function stars(n) {
+    return '<span class="stars">' + '★'.repeat(n) + '☆'.repeat(5 - n) + '</span>';
+  }
+
+  // ---------- Navigation ----------
+  const navItems = document.querySelectorAll('.nav-item');
+  const panels = document.querySelectorAll('.panel');
+  const titles = { overview: 'Overview', catalog: 'Catalog', orders: 'Orders', reviews: 'Reviews', accounts: 'Accounts' };
+
+  navItems.forEach(item => {
+    item.addEventListener('click', () => {
+      navItems.forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      const target = item.dataset.panel;
+      panels.forEach(p => p.classList.toggle('active', p.id === 'panel-' + target));
+      document.getElementById('page-title').textContent = titles[target];
+    });
+  });
+
+  document.getElementById('page-date').textContent = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  // ---------- Overview ----------
+  function renderOverview() {
+    const revenue = state.orders.filter(o => o.status !== 'Cancelled').reduce((sum, o) => sum + o.total, 0);
+    const activeOrders = state.orders.filter(o => o.status !== 'Cancelled').length;
+    const lowStock = state.books.filter(b => b.stock <= 8).length;
+    const pendingReviews = state.reviews.filter(r => r.status === 'pending').length;
+
+    document.getElementById('stat-revenue').textContent = rupee(revenue);
+    document.getElementById('stat-revenue-note').textContent = `Across ${state.orders.length} orders`;
+    document.getElementById('stat-orders').textContent = activeOrders;
+    document.getElementById('stat-orders-note').textContent = `${state.orders.filter(o=>o.status==='Cancelled').length} cancelled`;
+    document.getElementById('stat-stock').textContent = lowStock;
+    document.getElementById('stat-reviews').textContent = pendingReviews;
+    document.getElementById('stat-reviews-note').textContent = pendingReviews ? 'Waiting on you' : 'All caught up';
+
+    const recent = document.getElementById('recent-orders');
+    recent.innerHTML = state.orders.slice(0, 5).map(o => `
+      <div class="mini-row">
+        <div><div class="who">${o.id} · ${o.customer}</div><div class="sub">${fmtDate(o.date)}</div></div>
+        <div>${rupee(o.total)}</div>
+      </div>`).join('');
+
+    const watch = document.getElementById('stock-watch');
+    const low = state.books.filter(b => b.stock <= 8);
+    watch.innerHTML = low.length ? low.map(b => `
+      <div class="mini-row">
+        <div><div class="who">${b.title}</div><div class="sub">${b.author}</div></div>
+        <div>${stockBadge(b.stock)}</div>
+      </div>`).join('') : '<div class="empty">Everything is well stocked.</div>';
+  }
+
+  // ---------- Catalog ----------
+  function renderCatalog() {
+    const body = document.getElementById('catalog-body');
+    body.innerHTML = state.books.map(b => `
+      <tr>
+        <td><div class="book-cell"><div class="cover-chip"></div><div><div class="title">${b.title}</div><div class="author">${b.author}</div></div></div></td>
+        <td>${rupee(b.price)}</td>
+        <td>${b.stock}</td>
+        <td>${stockBadge(b.stock)}</td>
+        <td>
+          <div class="row-actions">
+            <button class="btn-text" onclick="editBook('${b.id}')">Edit</button>
+            <button class="btn-text danger" onclick="deleteBook('${b.id}')">Delete</button>
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+
+  let editingBookId = null;
+  function openBookModal(book) {
+    editingBookId = book ? book.id : null;
+    document.getElementById('book-modal-title').textContent = book ? 'Edit book' : 'Add book';
+    document.getElementById('f-title').value = book ? book.title : '';
+    document.getElementById('f-author').value = book ? book.author : '';
+    document.getElementById('f-price').value = book ? book.price : '';
+    document.getElementById('f-stock').value = book ? book.stock : '';
+    document.getElementById('book-modal').classList.add('active');
+  }
+  function closeBookModal() { document.getElementById('book-modal').classList.remove('active'); }
+
+  window.editBook = (id) => openBookModal(state.books.find(b => b.id === id));
+  window.deleteBook = (id) => {
+    if (!confirm('Remove this title from the catalog?')) return;
+    state.books = state.books.filter(b => b.id !== id);
+    renderCatalog();
+    renderOverview();
+  };
+
+  document.getElementById('add-book-btn').addEventListener('click', () => openBookModal(null));
+  document.getElementById('add-book-shortcut').addEventListener('click', () => openBookModal(null));
+  document.getElementById('book-modal-cancel').addEventListener('click', closeBookModal);
+  document.getElementById('book-modal-save').addEventListener('click', () => {
+    const title = document.getElementById('f-title').value.trim();
+    const author = document.getElementById('f-author').value.trim();
+    const price = Number(document.getElementById('f-price').value) || 0;
+    const stock = Number(document.getElementById('f-stock').value) || 0;
+    if (!title || !author) { alert('Title and author are required.'); return; }
+
+    if (editingBookId) {
+      const b = state.books.find(x => x.id === editingBookId);
+      Object.assign(b, { title, author, price, stock });
+    } else {
+      state.books.push({ id: 'b' + (state.books.length + 1) + '_' + Date.now(), title, author, price, stock });
+    }
+    closeBookModal();
+    renderCatalog();
+    renderOverview();
+  });
+
+  // ---------- Orders ----------
+  function renderOrders() {
+    const body = document.getElementById('orders-body');
+    body.innerHTML = state.orders.map(o => `
+      <tr>
+        <td>${o.id}</td>
+        <td>${o.customer}</td>
+        <td>${fmtDate(o.date)}</td>
+        <td>${o.items}</td>
+        <td>${rupee(o.total)}</td>
+        <td>
+          <select class="status-select" onchange="updateOrderStatus('${o.id}', this.value)">
+            ${orderStatusOptions(o.status)}
+          </select>
+        </td>
+      </tr>`).join('');
+  }
+  window.updateOrderStatus = (id, status) => {
+    const o = state.orders.find(x => x.id === id);
+    o.status = status;
+    renderOverview();
+  };
+
+  // ---------- Reviews ----------
+  function renderReviews() {
+    const body = document.getElementById('reviews-body');
+    body.innerHTML = state.reviews.map(r => `
+      <tr>
+        <td>${r.book}</td>
+        <td>${r.reviewer}</td>
+        <td>${stars(r.rating)}</td>
+        <td class="review-text">${r.text}</td>
+        <td><span class="badge ${r.status}">${r.status === 'pending' ? 'Pending' : 'Approved'}</span></td>
+        <td>
+          <div class="row-actions">
+            ${r.status === 'pending' ? `<button class="btn-text" onclick="approveReview('${r.id}')">Approve</button>` : ''}
+            <button class="btn-text danger" onclick="deleteReview('${r.id}')">Delete</button>
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+  window.approveReview = (id) => {
+    state.reviews.find(r => r.id === id).status = 'approved';
+    renderReviews();
+    renderOverview();
+  };
+  window.deleteReview = (id) => {
+    if (!confirm('Delete this review?')) return;
+    state.reviews = state.reviews.filter(r => r.id !== id);
+    renderReviews();
+    renderOverview();
+  };
+
+  // ---------- Accounts ----------
+  function renderAccounts() {
+    const body = document.getElementById('accounts-body');
+    body.innerHTML = state.accounts.map(a => `
+      <tr>
+        <td>${a.name}</td>
+        <td>${a.email}</td>
+        <td>${fmtDate(a.joined)}</td>
+        <td>${a.role}</td>
+        <td><span class="badge ${a.status === 'banned' ? 'banned' : 'active-acc'}">${a.status === 'banned' ? 'Banned' : 'Active'}</span></td>
+        <td>
+          <div class="row-actions">
+            <button class="btn-text ${a.status === 'banned' ? '' : 'danger'}" onclick="toggleBan('${a.id}')">${a.status === 'banned' ? 'Unban' : 'Ban'}</button>
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+  window.toggleBan = (id) => {
+    const a = state.accounts.find(x => x.id === id);
+    a.status = a.status === 'banned' ? 'active' : 'banned';
+    renderAccounts();
+  };
+
+  // ---------- Init ----------
+  renderOverview();
+  renderCatalog();
+  renderOrders();
+  renderReviews();
+  renderAccounts();
+</script>
+</body>
+</html>
