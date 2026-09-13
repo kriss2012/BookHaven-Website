@@ -16,6 +16,9 @@
 <a href="https://kriss2012.github.io/BookHaven-Website/frontend/bookhaven-admin.html">
 <img src="https://img.shields.io/badge/🌐%20LIVE%20DEMO-Admin-8B5CF6?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Live Demo">
 </a>
+<a href="https://kriss2012.github.io/BookHaven-Website/frontend/admin.html">
+<img src="https://img.shields.io/badge/🌐%20LIVE%20DEMO-Admin-New-8B5CF6?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Live Demo">
+</a>
 
 <a href="https://github.com/kriss2012/BookHaven-Website">
 <imgsrc="https://img.shields.io/badge/💻%20SOURCE%20CODE-GITHUB-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub">
