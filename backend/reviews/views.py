@@ -37,7 +37,10 @@ class ReviewDeleteView(APIView):
 
     def delete(self, request, review_id):
         try:
-            review = Review.objects.get(id=review_id, user=request.user)
+            if request.user.is_staff:
+                review = Review.objects.get(id=review_id)
+            else:
+                review = Review.objects.get(id=review_id, user=request.user)
             review.delete()
             return Response({'message': 'Review deleted.'})
         except Review.DoesNotExist:

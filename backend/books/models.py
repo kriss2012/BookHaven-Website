@@ -25,6 +25,7 @@ class Book(models.Model):
     badge = models.CharField(max_length=50, blank=True, default='Bestseller')
     description = models.TextField(blank=True)
     isbn = models.CharField(max_length=20, blank=True)
+    stock = models.PositiveIntegerField(default=15, help_text='Inventory stock count')
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

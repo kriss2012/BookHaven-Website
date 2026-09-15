@@ -11,6 +11,7 @@ urlpatterns = [
     # Orders
     path('', views.OrderListView.as_view(), name='order-list'),
     path('checkout/', views.CheckoutView.as_view(), name='order-checkout'),
+    path('record-sold/', views.RecordSoldView.as_view(), name='record-sold'),
     path('<int:order_id>/', views.OrderDetailView.as_view(), name='order-detail'),
     path('<int:order_id>/cancel/', views.OrderCancelView.as_view(), name='order-cancel'),
     # Wishlist

@@ -322,6 +322,10 @@
         </div>
       </div>
       <div class="topbar-actions">
+        <a href="index.html" class="btn btn-ghost" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid var(--border);border-radius:7px;color:var(--ink);" title="View Storefront">
+          <span>Storefront</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+        </a>
         <button class="icon-btn" id="refresh-btn" title="Refresh data">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 4v5h-5"/></svg>
         </button>
@@ -384,7 +388,7 @@
         </div>
         <div class="table-scroll">
           <table>
-            <thead><tr><th>Title</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Title</th><th>Price</th><th>Copies Left</th><th>Status</th><th></th></tr></thead>
             <tbody id="catalog-body"></tbody>
           </table>
         </div>
@@ -490,8 +494,8 @@
         <div class="field-error" id="err-price"></div>
       </div>
       <div class="field">
-        <label>Stock quantity</label>
-        <input type="number" id="f-stock" min="0" step="1">
+        <label>Copies count (Inventory stock)</label>
+        <input type="number" id="f-stock" min="0" step="1" placeholder="e.g. 15">
         <div class="field-error" id="err-stock"></div>
       </div>
     </div>
@@ -734,24 +738,25 @@
 
     if (!rows.length) { body.innerHTML = `<tr><td colspan="5"><div class="empty">${state.books.length ? 'No books match your search.' : 'No books in the catalog yet — add your first one.'}</div></td></tr>`; return; }
 
-    body.innerHTML = rows.map(b => `
+    body.innerHTML = rows.map(b => {
+      const cover = b.image_url || (b.id === 4 ? 'assets/harry-potter.jpg' : `assets/book-${b.id}.jpg`);
+      return `
       <tr>
-        <td data-label="Title"><div class="book-cell"><div class="cover-chip" style="${b.image_url ? `background-image:url('${esc(b.image_url)}')` : ''}"></div><div><div class="title">${esc(b.title)}</div><div class="author">${esc(b.author)}</div></div></div></td>
+        <td data-label="Title"><div class="book-cell"><div class="cover-chip" style="${cover ? `background-image:url('${esc(cover)}')` : ''}"></div><div><div class="title">${esc(b.title)}</div><div class="author">${esc(b.author)}</div></div></div></td>
         <td data-label="Price">${rupee(b.price)}</td>
-        <td data-label="Stock">${b.stock}</td>
+        <td data-label="Copies Left">${b.stock}</td>
         <td data-label="Status">${stockBadge(Number(b.stock))}</td>
         <td data-label="">
           <div class="row-actions">
             <button class="btn-text" data-edit="${b.id}">Edit</button>
-            ${b.stock > 0 ? `<button class="btn-text muted" data-outofstock="${b.id}">Mark out</button>` : ''}
             <button class="btn-text danger" data-delete="${b.id}">Delete</button>
           </div>
         </td>
-      </tr>`).join('');
+      </tr>`;
+    }).join('');
 
     body.querySelectorAll('[data-edit]').forEach(btn => btn.addEventListener('click', () => openBookModal(state.books.find(b => String(b.id) === btn.dataset.edit))));
     body.querySelectorAll('[data-delete]').forEach(btn => btn.addEventListener('click', () => deleteBook(btn.dataset.delete)));
-    body.querySelectorAll('[data-outofstock]').forEach(btn => btn.addEventListener('click', () => markOutOfStock(btn.dataset.outofstock)));
   }
 
   async function markOutOfStock(id) {
@@ -773,6 +778,7 @@
     try {
       await BookHavenAdmin.books.remove(id);
       state.books = state.books.filter(b => String(b.id) !== String(id));
+      try { localStorage.setItem('bh_catalog_version', String(Date.now())); } catch {}
       renderCatalog(); renderOverview();
       toast('Book removed from the catalog.', 'success');
     } catch (err) {
@@ -836,6 +842,7 @@
           toast('Book added to the catalog.', 'success');
         }
         closeBookModal();
+        try { localStorage.setItem('bh_catalog_version', String(Date.now())); } catch {}
         renderCatalog(); renderOverview();
       } catch (err) {
         toast(friendlyError(err, 'Could not save this book.'), 'error');

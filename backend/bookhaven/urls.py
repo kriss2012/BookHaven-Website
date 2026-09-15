@@ -17,6 +17,7 @@ urlpatterns = [
 
     # API Endpoints
     path('api/auth/', include('users.urls')),
+    path('api/admin/', include('bookhaven.admin_urls')),
     path('api/books/', include('books.urls')),
     path('api/orders/', include('orders.urls')),
     path('api/reviews/', include('reviews.urls')),

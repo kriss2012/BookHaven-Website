@@ -638,11 +638,12 @@ function closeUserMenu() {
 function generateBooks(filter = 'all') {
   const container = document.getElementById('books-container');
   if (!container) return;
+  const currentBooks = (Array.isArray(window.books) && window.books.length > 0) ? window.books : books;
   let filtered;
   if (filter === 'eBook') {
-    filtered = books.filter(b => b.ebook);
+    filtered = currentBooks.filter(b => b.ebook);
   } else {
-    filtered = filter === 'all' ? books : books.filter(b => b.category === filter);
+    filtered = filter === 'all' ? currentBooks : currentBooks.filter(b => b.category === filter);
   }
   container.innerHTML = filtered.map(book => buildBookCard(book)).join('');
 }
@@ -652,12 +653,14 @@ function buildBookCard(book) {
   const isWishlisted = Array.isArray(window.wishlist) && window.wishlist.some(id => String(id) === String(book.id));
   const ebookPrice = Math.round(book.price * 0.6);
   const ebookBadge = book.ebook ? `<span class="book-card-ebook-price">eBook ${formatINR(ebookPrice)}</span>` : '';
-  const badgeClass = book.badge === 'Hot' ? 'badge-hot' : (book.badge === 'Classic' ? 'badge-classic' : '');
-  const badgeHtml = book.badge ? `<span class="book-badge ${badgeClass}">${escHtml(book.badge)}</span>` : '';
+  const isOutOfStock = (book.stock !== undefined && Number(book.stock) <= 0);
+  const badgeClass = isOutOfStock ? 'badge-out' : (book.badge === 'Hot' ? 'badge-hot' : (book.badge === 'Classic' ? 'badge-classic' : ''));
+  const badgeText = isOutOfStock ? 'Out of Stock' : (book.badge || '');
+  const badgeHtml = badgeText ? `<span class="book-badge ${badgeClass}" style="${isOutOfStock ? 'background:#dc2626;color:#fff;font-weight:700;' : ''}">${escHtml(badgeText)}</span>` : '';
   const fallbackSvg = generateEditorialCoverSvg(book.title, book.author, book.category);
 
   return `
-    <div class="book-card" data-id="${book.id}">
+    <div class="book-card ${isOutOfStock ? 'is-out-of-stock' : ''}" data-id="${book.id}">
       <div class="book-card-cover-wrap">
         ${badgeHtml}
         <button class="book-wishlist-btn ${isWishlisted ? 'active' : ''}" data-wishlist-book="${book.id}" aria-label="Save to Wishlist">
@@ -689,7 +692,11 @@ function buildBookCard(book) {
             <span class="book-card-price">${formatINR(book.price)}</span>
             ${ebookBadge}
           </div>
-          <button class="btn-add-bag" data-add-to-cart>Add to Bag</button>
+          ${isOutOfStock ? `
+            <button class="btn-add-bag" disabled style="opacity:0.55;cursor:not-allowed;background:#64748b;color:#fff;">Out of Stock</button>
+          ` : `
+            <button class="btn-add-bag" data-add-to-cart>Add to Bag</button>
+          `}
         </div>
       </div>
     </div>`;
@@ -699,13 +706,15 @@ function buildBookCard(book) {
 function renderTrending() {
   const container = document.getElementById('trending-container');
   if (!container) return;
+  const sourceBooks = Array.isArray(window.books) && window.books.length > 0 ? window.books : books;
   container.innerHTML = trendingBooks.map(t => {
-    const book = books.find(b => b.id === t.bookId);
+    const book = sourceBooks.find(b => b.id === t.bookId);
     if (!book) return '';
     const rankFormatted = String(t.rank).padStart(2, '0');
+    const isTrendingOut = (book.stock !== undefined && Number(book.stock) <= 0);
     const fallbackSvg = generateEditorialCoverSvg(book.title, book.author, book.category);
     return `
-      <div class="trending-card-ranked" data-id="${book.id}">
+      <div class="trending-card-ranked ${isTrendingOut ? 'is-out-of-stock' : ''}" data-id="${book.id}">
         <div class="trending-rank-col">
           <span class="trending-rank-num">${rankFormatted}</span>
           <span class="trending-growth-badge">${escHtml(t.weeklyChange)}</span>
@@ -720,7 +729,11 @@ function renderTrending() {
           <h4 class="trending-book-title">${escHtml(book.title)}</h4>
           <span class="trending-book-author">by ${escHtml(book.author)}</span>
           <span class="trending-book-price">${formatINR(book.price)}</span>
-          <button class="btn-add-bag" style="margin-top:0.6rem;width:fit-content;" data-add-trending="${book.id}">+ Add to Bag</button>
+          ${isTrendingOut ? `
+            <button class="btn-add-bag" disabled style="margin-top:0.6rem;width:fit-content;opacity:0.55;cursor:not-allowed;background:#64748b;color:#fff;">Out of Stock</button>
+          ` : `
+            <button class="btn-add-bag" style="margin-top:0.6rem;width:fit-content;" data-add-trending="${book.id}">+ Add to Bag</button>
+          `}
         </div>
       </div>`;
   }).join('');
@@ -862,6 +875,21 @@ function addToCart(id, format = 'physical', quantity = 1) {
 
   const qty = Math.max(1, Number(quantity) || 1);
   const cartId = `${book.id}-${format}`;
+
+  if (format !== 'ebook') {
+    const currentStock = (book.stock !== undefined) ? Number(book.stock) : 15;
+    if (currentStock <= 0) {
+      showNotification(`"${book.title}" is currently out of stock.`, 'error');
+      return;
+    }
+    const existing = cart.find(item => item.cartId === cartId);
+    const existingQty = existing ? existing.quantity : 0;
+    if (existingQty + qty > currentStock) {
+      showNotification(`Cannot add ${qty} more copies. Only ${currentStock} copies of "${book.title}" are available in stock.`, 'error');
+      return;
+    }
+  }
+
   const itemPrice = format === 'ebook' ? Math.round(book.price * 0.6) : book.price;
   const existing = cart.find(item => item.cartId === cartId);
 
@@ -959,13 +987,30 @@ function openCart(triggerEl = null) {
       meterFill.style.width = `${Math.min(100, Math.round((subtotal / 999) * 100))}%`;
     }
 
+    let hasOutOfStock = false;
+    let hasOverStock = false;
+    const sourceBooks = Array.isArray(window.books) && window.books.length > 0 ? window.books : books;
+
     itemsDiv.innerHTML = cart.map(item => {
       const cId = item.cartId || `${item.id}-${item.format || 'physical'}`;
       item.cartId = cId;
+      const bObj = sourceBooks.find(b => b.id === Number(item.id));
+      const bStock = bObj ? ((bObj.stock !== undefined) ? Number(bObj.stock) : 15) : 15;
+      const isOut = item.format !== 'ebook' && bStock <= 0;
+      const isOver = item.format !== 'ebook' && bStock > 0 && item.quantity > bStock;
+      if (isOut) hasOutOfStock = true;
+      if (isOver) hasOverStock = true;
+
+      const stockWarningHtml = isOut
+        ? `<div style="margin-top:6px;"><span class="badge" style="background:#fee2e2;color:#b91c1c;padding:3px 8px;font-size:0.75rem;font-weight:700;border-radius:4px;display:inline-block;border:1px solid #f87171;">⚠️ Out of Stock</span></div>`
+        : (isOver
+          ? `<div style="margin-top:6px;"><span class="badge" style="background:#fef3c7;color:#b45309;padding:3px 8px;font-size:0.75rem;font-weight:700;border-radius:4px;display:inline-block;border:1px solid #fcd34d;">⚠️ Only ${bStock} copies available</span></div>`
+          : '');
+
       const fallbackSvg = generateEditorialCoverSvg(item.title, item.author || 'Author', item.category || 'Books');
       const coverSrc = (item.image && item.image.trim()) ? item.image : fallbackSvg;
       return `
-      <div class="cart-item" data-cart-id="${cId}">
+      <div class="cart-item ${isOut ? 'cart-item-out-of-stock' : ''}" data-cart-id="${cId}" style="${isOut ? 'background:rgba(254,242,242,0.4);border-radius:8px;padding:8px;' : ''}">
         <div class="cart-item-thumb">
           <img src="${escHtml(coverSrc)}" alt="${escHtml(item.title)}" class="cart-item-img"
                onload="if(this.naturalWidth<=1||this.naturalHeight<=1){this.onerror=null;this.onload=null;this.src='${fallbackSvg}';}"
@@ -980,11 +1025,12 @@ function openCart(triggerEl = null) {
             </span>
             <span class="cart-item-unit">${formatINR(item.price)} each</span>
           </div>
+          ${stockWarningHtml}
           <div class="cart-item-actions">
             <div class="cart-qty-ctrl">
               <button type="button" onclick="changeCartQty('${cId}', -1)" class="cart-qty-btn" aria-label="Decrease quantity">−</button>
               <span class="cart-qty-num">${item.quantity}</span>
-              <button type="button" onclick="changeCartQty('${cId}', 1)" class="cart-qty-btn" aria-label="Increase quantity">+</button>
+              <button type="button" onclick="changeCartQty('${cId}', 1)" class="cart-qty-btn" aria-label="Increase quantity" ${isOut ? 'disabled style="opacity:0.4;cursor:not-allowed;"' : ''}>+</button>
             </div>
             <button type="button" onclick="removeCartItem('${cId}')" class="cart-remove-btn" aria-label="Remove item">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
@@ -995,6 +1041,30 @@ function openCart(triggerEl = null) {
         <div class="cart-item-total">${formatINR(item.price * item.quantity)}</div>
       </div>`;
     }).join('');
+
+    const checkoutBtn = document.getElementById('checkout-btn');
+    const existingWarning = document.getElementById('cart-checkout-stock-alert');
+    if (existingWarning) existingWarning.remove();
+
+    if (checkoutBtn) {
+      if (hasOutOfStock || hasOverStock) {
+        checkoutBtn.disabled = true;
+        checkoutBtn.style.opacity = '0.55';
+        checkoutBtn.style.cursor = 'not-allowed';
+        const warnMsg = hasOutOfStock
+          ? '⚠️ One or more volumes in your bag are out of stock. Please remove them to proceed.'
+          : '⚠️ Some items in your bag exceed available copies. Please adjust quantities to proceed.';
+        const alertEl = document.createElement('div');
+        alertEl.id = 'cart-checkout-stock-alert';
+        alertEl.style.cssText = 'background:#fee2e2;color:#991b1b;border:1px solid #f87171;padding:10px 14px;border-radius:8px;font-size:0.82rem;font-weight:600;margin-bottom:12px;text-align:center;';
+        alertEl.textContent = warnMsg;
+        checkoutBtn.parentNode.insertBefore(alertEl, checkoutBtn);
+      } else {
+        checkoutBtn.disabled = false;
+        checkoutBtn.style.opacity = '1';
+        checkoutBtn.style.cursor = 'pointer';
+      }
+    }
   }
 
   ModalManager.open('cart-modal', triggerEl);
@@ -1013,6 +1083,17 @@ window.changeCartQty = function(cartId, delta) {
   if (newQty <= 0) {
     return window.removeCartItem(cartId);
   }
+
+  if (delta > 0 && item.format !== 'ebook') {
+    const sourceBooks = Array.isArray(window.books) && window.books.length > 0 ? window.books : books;
+    const b = sourceBooks.find(x => x.id === Number(item.id));
+    const stock = b ? ((b.stock !== undefined) ? Number(b.stock) : 15) : 15;
+    if (newQty > stock) {
+      showNotification(`Only ${stock} copies of "${item.title}" available in stock.`, 'info');
+      return;
+    }
+  }
+
   item.quantity = newQty;
 
   // Sync to server if patron has session
@@ -1062,6 +1143,29 @@ window.removeCartItem = function(cartId) {
 
 function checkout() {
   if (cart.length === 0) return showNotification('Your reading bag is empty!', 'error');
+
+  const sourceBooks = Array.isArray(window.books) && window.books.length > 0 ? window.books : books;
+  const outOfStockItems = cart.filter(item => {
+    if (item.format === 'ebook') return false;
+    const b = sourceBooks.find(x => x.id === Number(item.id));
+    return b && b.stock !== undefined && Number(b.stock) <= 0;
+  });
+  if (outOfStockItems.length > 0) {
+    showNotification(`Cannot proceed: "${outOfStockItems[0].title}" is out of stock. Please remove it from your bag.`, 'error');
+    openCart();
+    return;
+  }
+  const overStockItems = cart.filter(item => {
+    if (item.format === 'ebook') return false;
+    const b = sourceBooks.find(x => x.id === Number(item.id));
+    return b && b.stock !== undefined && Number(b.stock) > 0 && item.quantity > Number(b.stock);
+  });
+  if (overStockItems.length > 0) {
+    const b = sourceBooks.find(x => x.id === Number(overStockItems[0].id));
+    showNotification(`Cannot proceed: only ${b.stock} copies of "${overStockItems[0].title}" available in stock.`, 'error');
+    openCart();
+    return;
+  }
   const activeUser = currentUser || window.currentUser;
   if (!activeUser) {
     showNotification('Please sign in to proceed with checkout!', 'info');
@@ -1135,6 +1239,29 @@ let _selectedWallet = null;
 let _cardData = { number: '', name: '', expiry: '', cvv: '' };
 
 function openPaymentModal(triggerEl = null) {
+  const sourceBooks = window.books || (typeof books !== 'undefined' ? books : []);
+  const outOfStockItems = (cart || []).filter(item => {
+    if (item.format === 'ebook') return false;
+    const b = sourceBooks.find(x => x.id === Number(item.id));
+    return b && b.stock !== undefined && Number(b.stock) <= 0;
+  });
+  if (outOfStockItems.length > 0) {
+    showNotification(`Cannot proceed: "${outOfStockItems[0].title}" is out of stock. Please remove it from your bag.`, 'error');
+    openCart();
+    return;
+  }
+  const overStockItems = (cart || []).filter(item => {
+    if (item.format === 'ebook') return false;
+    const b = sourceBooks.find(x => x.id === Number(item.id));
+    return b && b.stock !== undefined && Number(b.stock) > 0 && item.quantity > Number(b.stock);
+  });
+  if (overStockItems.length > 0) {
+    const b = sourceBooks.find(x => x.id === Number(overStockItems[0].id));
+    showNotification(`Cannot proceed: only ${b.stock} copies of "${overStockItems[0].title}" available in stock.`, 'error');
+    openCart();
+    return;
+  }
+
   _pendingOrderBooks = [...cart];
   _activePayTab = 'upi';
   _selectedBank = null;
@@ -1365,6 +1492,31 @@ function formatExpiry(input) {
 }
 
 function processPayment(method) {
+  const sourceBooks = window.books || (typeof books !== 'undefined' ? books : []);
+  const outOfStockItems = (cart || []).filter(item => {
+    if (item.format === 'ebook') return false;
+    const b = sourceBooks.find(x => x.id === Number(item.id));
+    return b && b.stock !== undefined && Number(b.stock) <= 0;
+  });
+  if (outOfStockItems.length > 0) {
+    showNotification(`Cannot proceed: "${outOfStockItems[0].title}" is out of stock. Please remove it from your bag.`, 'error');
+    closePaymentModal();
+    openCart();
+    return;
+  }
+  const overStockItems = (cart || []).filter(item => {
+    if (item.format === 'ebook') return false;
+    const b = sourceBooks.find(x => x.id === Number(item.id));
+    return b && b.stock !== undefined && Number(b.stock) > 0 && item.quantity > Number(b.stock);
+  });
+  if (overStockItems.length > 0) {
+    const b = sourceBooks.find(x => x.id === Number(overStockItems[0].id));
+    showNotification(`Cannot proceed: only ${b.stock} copies of "${overStockItems[0].title}" available in stock.`, 'error');
+    closePaymentModal();
+    openCart();
+    return;
+  }
+
   // 1. Show shipping animation screen overlay in the payment body
   const body = document.getElementById('payment-modal-body');
   if (!body) return;
@@ -1452,6 +1604,33 @@ async function processPaymentSuccess(method, txnId, total) {
 
   // 💾 Save order to local DB
   saveOrderRecord(purchasedBooks, total, txnId, method);
+
+  // Automatically decrement copies count in backend database and sync inventory
+  try {
+    fetch(`${getApiBaseUrl()}/orders/record-sold/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items: purchasedBooks.map(b => ({
+          book_id: b.id,
+          quantity: b.quantity || 1,
+          format: b.format || 'physical'
+        }))
+      })
+    }).then(r => r.json()).then(data => {
+      if (data && data.updated) {
+        data.updated.forEach(u => {
+          const found = (window.books || []).find(b => b.id === u.id);
+          if (found) found.stock = u.new_stock;
+        });
+        try { localStorage.setItem('bh_catalog_version', String(Date.now())); } catch {}
+        if (typeof generateBooks === 'function') generateBooks('all');
+        if (typeof renderTrending === 'function') renderTrending();
+      }
+    }).catch(() => {});
+  } catch (err) {
+    console.warn('Sold record sync error:', err);
+  }
 
   // Find eBook items in this purchase
   const ebookItems = purchasedBooks.filter(b => b.format === 'ebook');
@@ -3176,7 +3355,12 @@ function showQuickView(bookId, triggerEl) {
           <dl class="qv-metadata-grid">
             <div class="qv-meta-item"><dt>Category</dt><dd>${escHtml(book.category)}</dd></div>
             <div class="qv-meta-item"><dt>Format</dt><dd>${book.ebook ? 'Physical + eBook' : 'Physical Only'}</dd></div>
-            <div class="qv-meta-item"><dt>Availability</dt><dd>In Stock</dd></div>
+            <div class="qv-meta-item"><dt>Availability</dt><dd>${(() => {
+              const bStock = (book.stock !== undefined) ? Number(book.stock) : 15;
+              if (bStock <= 0) return '<span style="color:#dc2626;font-weight:700;">Out of Stock (0 copies)</span>';
+              if (bStock <= 8) return `<span style="color:#d97706;font-weight:600;">Only ${bStock} copies left</span>`;
+              return `<span style="color:#15803d;font-weight:600;">In Stock (${bStock} copies)</span>`;
+            })()}</dd></div>
           </dl>
         </div>
 
@@ -3196,12 +3380,22 @@ function showQuickView(bookId, triggerEl) {
           </div>
 
           <div class="qv-cta-row">
-            <button class="btn btn-editorial-primary qv-add-cart-btn" id="qv-add-btn" onclick="qvAddToCart(${book.id})">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
-                <circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-              </svg>
-              ADD TO BAG
-            </button>
+            ${(() => {
+              const bStock = (book.stock !== undefined) ? Number(book.stock) : 15;
+              if (bStock <= 0) {
+                return `
+                  <button class="btn btn-editorial-primary qv-add-cart-btn" id="qv-add-btn" disabled style="opacity:0.55;cursor:not-allowed;background:#64748b;color:#fff;">
+                    OUT OF STOCK
+                  </button>`;
+              }
+              return `
+                <button class="btn btn-editorial-primary qv-add-cart-btn" id="qv-add-btn" onclick="qvAddToCart(${book.id})">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
+                    <circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                  </svg>
+                  ADD TO BAG
+                </button>`;
+            })()}
           </div>
         </div>
       </div>
@@ -3216,7 +3410,11 @@ function changeQVQuantity(delta) {
   if (!input) return;
   let val = (parseInt(input.value, 10) || 1) + delta;
   if (val < 1) val = 1;
-  if (val > 99) val = 99;
+  const bStock = (_qvBook && _qvBook.stock !== undefined) ? Number(_qvBook.stock) : 15;
+  if (_qvFmt !== 'ebook' && bStock > 0 && val > bStock) {
+    val = bStock;
+    showNotification(`Only ${bStock} copies of this book are available in stock.`, 'info');
+  }
   input.value = val;
   _qvQty = val;
 }
@@ -3232,6 +3430,11 @@ function selectQVFormat(fmt, physPrice, ebookPrice) {
 function qvAddToCart(bookId) {
   const id = bookId || (_qvBook && _qvBook.id);
   if (!id) return;
+  const b = (window.books || books).find(x => x.id === Number(id)) || _qvBook;
+  if (_qvFmt !== 'ebook' && b && b.stock !== undefined && Number(b.stock) <= 0) {
+    showNotification(`"${b.title}" is currently out of stock.`, 'error');
+    return;
+  }
   const qtyInput = document.getElementById('qv-qty-input');
   const qty = qtyInput ? (parseInt(qtyInput.value, 10) || 1) : (_qvQty || 1);
   addToCart(id, _qvFmt, qty);

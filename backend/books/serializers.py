@@ -12,7 +12,7 @@ class BookSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'title', 'author', 'price', 'ebook_price',
             'category', 'image_url', 'rating', 'reviews_count',
-            'is_ebook', 'badge', 'description', 'isbn',
+            'is_ebook', 'badge', 'description', 'isbn', 'stock',
             'user_rating', 'total_reviews',
         )
 

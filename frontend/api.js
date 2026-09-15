@@ -273,13 +273,17 @@
     // DRF can return { results: [...] } (paginated) or a plain array
     const bookList = ok ? (Array.isArray(data) ? data : (data.results || [])) : [];
     if (ok && bookList.length > 0) {
-      // Patch global `books` array so existing script.js functions still work
-      window.books = bookList.map(mapApiBook);
+      const mapped = bookList.map(mapApiBook);
+      if (filter === 'all') {
+        window.allBooks = mapped;
+        window.books = mapped;
+      } else {
+        window.books = mapped;
+      }
       container.innerHTML = window.books.map(book => buildBookCard(book)).join('');
       attachCardEvents(container);
     } else {
       // Empty result from API or Network error — fall through to static data
-      // Fallback: use static data already rendered by script.js
       generateBooks(filter);
     }
   }
@@ -317,8 +321,8 @@
 
   // Map Django API fields to the shape script.js expects
   function mapApiBook(b) {
-    let coverImg = LOCAL_BOOK_COVERS[b.id] || b.image_url;
-    if (b.id === 4 || (b.title && b.title.toLowerCase().includes('harry potter'))) {
+    let coverImg = b.image_url || LOCAL_BOOK_COVERS[b.id];
+    if (!coverImg && (b.id === 4 || (b.title && b.title.toLowerCase().includes('harry potter')))) {
       coverImg = 'assets/harry-potter.jpg';
     }
     return {
@@ -326,14 +330,23 @@
       title: b.title,
       author: b.author,
       price: b.price,
+      stock: b.stock !== undefined ? b.stock : 15,
       category: b.category,
-      image: coverImg,
-      rating: b.user_rating || b.rating,
-      reviews: b.total_reviews || b.reviews_count,
+      image: coverImg || '',
+      rating: b.user_rating || b.rating || 4.5,
+      reviews: b.total_reviews || b.reviews_count || 10,
       ebook: b.is_ebook,
-      badge: b.badge,
+      badge: b.badge || (b.stock === 0 ? 'Out of Stock' : (b.stock <= 5 ? 'Low Stock' : 'Bestseller')),
     };
   }
+
+  // Cross-tab auto-sync: when admin edits products, refresh storefront automatically
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'bh_catalog_version') {
+      fetchAndRenderBooks('all');
+      fetchAndRenderTrending();
+    }
+  });
 
   // Patch filter pills to use API
   document.addEventListener('DOMContentLoaded', async () => {
@@ -510,10 +523,26 @@
   window.addToCart = async function (bookId, format = 'physical', quantity = 1) {
     const qty = Math.max(1, parseInt(quantity, 10) || 1);
     const cartId = `${bookId}-${format}`;
+    const allBooks = window.books || (typeof books !== 'undefined' ? books : []);
+    const book = allBooks.find(b => b.id == bookId);
+
+    // Stock guard: disallow adding out-of-stock physical books or exceeding copies count
+    if (book && format !== 'ebook') {
+      const stock = Number(book.stock ?? 10);
+      if (stock <= 0) {
+        showNotification(`Sorry, "${book.title}" is currently Out of Stock!`, 'error');
+        return;
+      }
+      const existing = (window.cart || cart || []).find(c => c.cartId === cartId || (c.id == bookId && c.format === format));
+      const currentQtyInCart = existing ? (existing.quantity || 1) : 0;
+      if (currentQtyInCart + qty > stock) {
+        showNotification(`Only ${stock} copies available. You already have ${currentQtyInCart} in your bag.`, 'warning');
+        return;
+      }
+    }
+
     if (!currentUser || !getToken()) {
       // Not logged in — fall back to script.js local cart behavior
-      const allBooks = window.books || (typeof books !== 'undefined' ? books : []);
-      const book = allBooks.find(b => b.id == bookId);
       if (!book) return;
       const existing = cart.find(c => c.cartId === cartId || (c.id == bookId && c.format === format));
       if (existing) {
@@ -566,6 +595,11 @@
     // 1. Intercept Add to Cart
     const addBtn = e.target.closest('[data-add-to-cart]');
     if (addBtn) {
+      if (addBtn.disabled) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
       e.stopPropagation(); // Prevent duplicate handling
       const card = addBtn.closest('.book-card');
       if (!card) return;
@@ -678,6 +712,24 @@
     updateCartCount();
     apiPendingOrderBooks = purchasedBooks;
     
+    // Decrement stock for purchased physical items locally & sync
+    if (Array.isArray(order.items) && window.books) {
+      order.items.forEach(item => {
+        if (item.format !== 'ebook') {
+          const b = window.books.find(x => x.id === item.book);
+          if (b) {
+            b.stock = Math.max(0, (b.stock ?? 10) - (item.quantity || 1));
+          }
+        }
+      });
+      try {
+        localStorage.setItem('bh_books_cache', JSON.stringify(window.books));
+        localStorage.setItem('bh_catalog_version', String(Date.now()));
+      } catch(e) {}
+      if (typeof renderBooks === 'function') renderBooks();
+      if (typeof renderTrending === 'function') renderTrending();
+    }
+
     // Add to local ordersDB so tracking works immediately
     ordersDB.unshift({
         id: txnId,
@@ -938,6 +990,7 @@
     // Add to cart buttons
     container.querySelectorAll('[data-add-to-cart]').forEach(btn => {
       btn.addEventListener('click', (e) => {
+        if (btn.disabled) return;
         e.stopPropagation();
         const card = btn.closest('.book-card');
         if (!card) return;

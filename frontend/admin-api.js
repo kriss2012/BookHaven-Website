@@ -9,7 +9,16 @@
    ========================================================================= */
 
 const BookHavenAdmin = (() => {
-  const API_BASE = window.BOOKHAVEN_API_BASE || 'http://127.0.0.1:8000/api';
+  const getApiBase = () => {
+    if (window.BOOKHAVEN_API_BASE) return window.BOOKHAVEN_API_BASE.replace(/\/+$/, '');
+    if (window.BOOKHAVEN_API_URL) return window.BOOKHAVEN_API_URL.replace(/\/+$/, '');
+    if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+      return 'http://127.0.0.1:8001/api';
+    }
+    return 'https://bookhaven-website.onrender.com/api';
+  };
+
+  let API_BASE = getApiBase();
 
   const STORAGE = {
     access: 'bh_admin_access',
@@ -95,7 +104,17 @@ const BookHavenAdmin = (() => {
     try {
       res = await fetch(url, { ...options, headers });
     } catch (networkErr) {
-      throw new ApiError('Could not reach the server. Check your connection.', 'NETWORK_ERROR', 0);
+      if (API_BASE.includes(':8001')) {
+        try {
+          const altUrl = url.replace(':8001', ':8000');
+          res = await fetch(altUrl, { ...options, headers });
+          API_BASE = API_BASE.replace(':8001', ':8000');
+        } catch {
+          throw new ApiError('Could not reach the server. Check your connection.', 'NETWORK_ERROR', 0);
+        }
+      } else {
+        throw new ApiError('Could not reach the server. Check your connection.', 'NETWORK_ERROR', 0);
+      }
     }
 
     if (res.status === 401 && !_retried && tokens.getRefresh()) {

@@ -12,6 +12,7 @@ class Review(models.Model):
         validators=[MinValueValidator(1), MaxValueValidator(5)]
     )
     text = models.TextField(blank=True)
+    status = models.CharField(max_length=20, default='approved', choices=[('pending', 'Pending'), ('approved', 'Approved')])
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

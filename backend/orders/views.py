@@ -37,6 +37,14 @@ class CartAddView(APIView):
             fmt = serializer.validated_data.get('format', 'physical')
             qty = serializer.validated_data.get('quantity', 1)
 
+            if fmt != 'ebook':
+                if book.stock <= 0:
+                    return Response({'error': f'"{book.title}" is out of stock.'}, status=status.HTTP_400_BAD_REQUEST)
+                existing_item = CartItem.objects.filter(cart=cart, book=book, format=fmt).first()
+                existing_qty = existing_item.quantity if existing_item else 0
+                if existing_qty + qty > book.stock:
+                    return Response({'error': f'Only {book.stock} copies of "{book.title}" available.'}, status=status.HTTP_400_BAD_REQUEST)
+
             item, created = CartItem.objects.get_or_create(
                 cart=cart, book=book, format=fmt,
                 defaults={'quantity': qty}
@@ -64,6 +72,8 @@ class CartUpdateView(APIView):
         if qty <= 0:
             item.delete()
         else:
+            if item.format != 'ebook' and qty > item.book.stock:
+                return Response({'error': f'Only {item.book.stock} copies available.'}, status=status.HTTP_400_BAD_REQUEST)
             item.quantity = qty
             item.save()
         return Response(CartSerializer(cart).data)
@@ -117,6 +127,18 @@ class CheckoutView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        # Validate stock availability for all cart items
+        for item in items:
+            if item.format != 'ebook':
+                if item.book.stock <= 0:
+                    return Response({
+                        'error': f'"{item.book.title}" is out of stock. Please remove it from your bag.'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                if item.quantity > item.book.stock:
+                    return Response({
+                        'error': f'"{item.book.title}" only has {item.book.stock} copies left in stock (you have {item.quantity} in bag).'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
         # Apply coupon discount (simple demo logic)
         coupon = serializer.validated_data.get('coupon_code', '').upper()
         COUPON_MAP = {
@@ -146,7 +168,7 @@ class CheckoutView(APIView):
             payment_method=serializer.validated_data.get('payment_method', 'UPI'),
         )
 
-        # Create order items (price snapshot)
+        # Create order items and decrement book stock
         for item in items:
             OrderItem.objects.create(
                 order=order,
@@ -157,6 +179,9 @@ class CheckoutView(APIView):
                 format=item.format,
                 unit_price=item.unit_price,
             )
+            if item.format != 'ebook':
+                item.book.stock = max(0, item.book.stock - item.quantity)
+                item.book.save(update_fields=['stock'])
 
         # Clear cart
         items.delete()
@@ -251,3 +276,28 @@ class WishlistToggleView(APIView):
             'action': action,
             'wishlist': WishlistSerializer(wishlist).data
         }, status=status.HTTP_200_OK)
+
+
+from rest_framework.permissions import AllowAny
+
+class RecordSoldView(APIView):
+    """POST /api/orders/record-sold/ — Automatically decrement copies count when books are sold."""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        items = request.data.get('items', [])
+        updated = []
+        for it in items:
+            bid = it.get('book_id') or it.get('id')
+            try:
+                qty = int(it.get('quantity', 1))
+            except (ValueError, TypeError):
+                qty = 1
+            fmt = it.get('format', 'physical')
+            if fmt != 'ebook' and bid:
+                b = Book.objects.filter(id=bid).first()
+                if b:
+                    b.stock = max(0, b.stock - qty)
+                    b.save(update_fields=['stock'])
+                    updated.append({'id': b.id, 'title': b.title, 'new_stock': b.stock, 'stock': b.stock})
+        return Response({'success': True, 'updated': updated})
